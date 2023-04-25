@@ -1,5 +1,3 @@
-<!--Script courtesy of RxStomp https://github.com/stomp-js/rx-stomp-->
-
 <script type="importmap">
 	{
 		"imports": {
@@ -17,13 +15,12 @@
 </script>
 
 <!-- ES Module Shims: Import maps polyfill for modules browsers without import maps support (all except Chrome 89+) -->
-<script async src="https://ga.jspm.io/npm:es-module-shims@1.5.1/dist/es-module-shims.js"
-		crossorigin="anonymous"></script>
+<script async src="https://ga.jspm.io/npm:es-module-shims@1.5.1/dist/es-module-shims.js" crossorigin="anonymous"></script>
 
 <script type="module">
 	import { RxStomp } from "@stomp/rx-stomp";
 
-	const re = /charset=([^()<>@,;:\"/[\]?.=\s]*)/i;
+	const re = /charset=([^()<>@,;:"/[\]?.=\s]*)/i;
 	const rxStomp = new RxStomp();
 
 	rxStomp.configure({
@@ -36,7 +33,7 @@
 		.watch({destination: "/topic/test-rx"})
 		.subscribe((message) => {
 			const contentType = message.headers['content-type'];
-			const charset = re.test(contentType) ? re.exec(contentType)[1] : 'utf8';
+			const charset = re.test(contentType) ? re.exec(contentType)[1] : 'utf-8';
 			const decoder = new TextDecoder(charset);
 			console.log(decoder.decode(message?.binaryBody?.buffer));
 		});
@@ -51,3 +48,10 @@
 		await rxStomp.deactivate();
 	}, 3000);
 </script>
+
+<body>
+	<div style="text-align: center;">
+		<p>Script courtesy of <a href="https://github.com/stomp-js/rx-stomp" target="_blank">RxStomp</a></p>
+		<a href="https://github.com/stomp-js/rx-stomp#browser" target="_blank">Source</a>
+	</div>
+</body>
