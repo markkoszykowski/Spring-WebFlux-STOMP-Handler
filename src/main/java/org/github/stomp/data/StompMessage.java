@@ -75,6 +75,7 @@ public class StompMessage {
 	}
 
 	public StompMessage(StompCommand command, MultiValueMap<String, String> headers, Charset charset, byte[] body) {
+		Assert.notNull(command, "Command must not be null");
 		Assert.notNull(headers, "Headers must not be null");
 		this.command = command;
 		this.headers = CollectionUtils.unmodifiableMultiValueMap(headers);
