@@ -22,7 +22,7 @@ public class WebSocketConfig {
 	@Bean
 	public HandlerMapping handlerMapping() {
 		Map<String, WebSocketHandler> handlerMap = Map.of(
-				SimpleStompHandler.WEBSOCKET_PATH, handler
+				SimpleStompHandler.SIMPLE_WEBSOCKET_PATH, handler
 		);
 		return new SimpleUrlHandlerMapping(handlerMap, Ordered.HIGHEST_PRECEDENCE);
 	}

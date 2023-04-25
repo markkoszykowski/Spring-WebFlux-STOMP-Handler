@@ -13,6 +13,7 @@ import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.socket.WebSocketMessage;
+import org.springframework.web.reactive.socket.WebSocketSession;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -170,6 +171,10 @@ public class StompMessage {
 
 		int size = buffer.position();
 		return buffer.rewind().limit(size).asReadOnlyBuffer();
+	}
+
+	public WebSocketMessage toWebSocketMessage(WebSocketSession session) {
+		return new WebSocketMessage(WebSocketMessage.Type.TEXT, session.bufferFactory().wrap(toByteBuffer()));
 	}
 
 }
