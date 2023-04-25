@@ -144,7 +144,7 @@ public abstract class AbstractStompHandler implements StompHandler {
 	}
 
 	private static String getContentLength(byte[] body) {
-		return String.valueOf(Optional.ofNullable(body).map(bytes -> bytes.length).orElse(0));
+		return Optional.ofNullable(body).map(bytes -> bytes.length).map(String::valueOf).orElse("0");
 	}
 
 	private static String getContentType(MimeType contentType) {
@@ -179,7 +179,7 @@ public abstract class AbstractStompHandler implements StompHandler {
 	private Flux<StompMessage> sessionReceiver(WebSocketSession session) {
 		return session.receive()
 				.map(StompMessage::from)
-				.doOnNext(message -> log.debug("Received WebSocket Message:\n{}", message))
+				.doOnNext(message -> doOnEachInbound(session, message))
 				.takeUntil(message -> StompCommand.DISCONNECT.equals(message.getCommand()))
 				.flatMap(inbound -> handler.get(inbound.getCommand()).apply(session, inbound)
 						.flatMap(outbound -> outbound.error() ? handleError(session, inbound, outbound) : Mono.just(outbound)))
@@ -199,7 +199,7 @@ public abstract class AbstractStompHandler implements StompHandler {
 					return outputFlux;
 				})
 				.switchIfEmpty(sessionReceiver(session))
-				.doOnNext(message -> doOnEach(session, message))
+				.doOnNext(message -> doOnEachOutbound(session, message))
 				.map(message -> message.toWebSocketMessage(session))
 		).doFinally(signal -> {
 			Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> sessionCaches = handleDisconnect(session);
