@@ -76,7 +76,8 @@ To run the compiled JAR, run the following from the repository root directory:
 $JAVA_HOME/bin/java.exe -jar ./build/libs/SpringWebFluxSTOMPHandler-1.0-SNAPSHOT.jar
 ```
 
-To interact with this example, open the [```websocket_test.html```](websocket_test.html) in your favorite browser and 
+To interact with this example, open the [```websocket_test.html```](src/test/resources/websocket_test.html) in your 
+favorite browser and 
 open up the console.
 
 
