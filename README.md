@@ -5,7 +5,7 @@
 ## Background
 
 With the addition of Spring's Reactive framework, dubbed WebFlux, many Spring MVC features have either not yet been
-implemented or do not plan to get implemented. This leaves a void for some who intend to upgrade their backend
+implemented or do not plan to get implemented. This leaves a Flux&lt;Void&gt; for some who intend to upgrade their backend
 architecture without having to restructure their frontend.
 
 This repository features a <em>very</em> lightweight implementation of a server-side STOMP WebSocket handler (designed 
