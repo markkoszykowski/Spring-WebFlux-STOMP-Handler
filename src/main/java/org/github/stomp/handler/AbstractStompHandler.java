@@ -192,11 +192,11 @@ public abstract class AbstractStompHandler implements StompHandler {
 	public Mono<Void> handle(WebSocketSession session) {
 		return session.send(addWebSocketSources(session)
 				.flatMapMany(sources -> {
-					Flux<StompMessage> outputFlux = sessionReceiver(session);
+					Flux<StompMessage> mergedSource = sessionReceiver(session);
 					for (Flux<StompMessage> source : sources) {
-						outputFlux = Flux.merge(outputFlux, source);
+						mergedSource = mergedSource.mergeWith(source);
 					}
-					return outputFlux;
+					return mergedSource;
 				})
 				.switchIfEmpty(sessionReceiver(session))
 				.doOnNext(message -> doOnEachOutbound(session, message))
