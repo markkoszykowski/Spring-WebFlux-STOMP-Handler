@@ -89,7 +89,7 @@ public interface StompHandler extends WebSocketHandler {
 	/**
 	 * Adds consumer for each inbound STOMP frame.
 	 *
-	 * @param session  The associated websocket session.
+	 * @param session The associated websocket session.
 	 * @param inbound The inbound STOMP frame.
 	 */
 	default void doOnEachInbound(WebSocketSession session, StompMessage inbound) {
