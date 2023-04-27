@@ -185,26 +185,21 @@ public abstract class AbstractStompHandler implements StompHandler {
 						.flatMap(outbound -> outbound.error() ? handleError(session, inbound, outbound) : Mono.just(outbound)))
 				.takeUntil(StompMessage::error)
 				.doOnError(ex -> log.error("Error during WebSocket handling: {}", ex.getMessage()))
-				.doFinally(signalType -> session.close().subscribeOn(Schedulers.boundedElastic()).subscribe());
+				.doFinally(signalType -> session.close().subscribeOn(Schedulers.immediate()).subscribe());
 	}
 
 	@Override
 	public Mono<Void> handle(WebSocketSession session) {
 		return session.send(addWebSocketSources(session)
-				.flatMapMany(sources -> {
-					Flux<StompMessage> mergedSource = sessionReceiver(session);
-					for (Flux<StompMessage> source : sources) {
-						mergedSource = mergedSource.mergeWith(source);
-					}
-					return mergedSource;
-				})
-				.switchIfEmpty(sessionReceiver(session))
-				.doOnNext(message -> doOnEachOutbound(session, message))
-				.map(message -> message.toWebSocketMessage(session))
-		).doFinally(signal -> {
-			Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> sessionCaches = handleDisconnect(session);
-			doFinally(session, signal, sessionCaches.getT1().orElse(null), sessionCaches.getT2().orElse(null));
-		});
+						.flatMapMany(Flux::merge)
+						.mergeWith(sessionReceiver(session))
+						.switchIfEmpty(sessionReceiver(session))
+						.doOnNext(message -> doOnEachOutbound(session, message))
+						.map(message -> message.toWebSocketMessage(session))
+				).doFinally(signal -> {
+					Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> sessionCaches = handleDisconnect(session);
+					doFinally(session, signal, sessionCaches.getT1().orElse(null), sessionCaches.getT2().orElse(null));
+				});
 	}
 
 
