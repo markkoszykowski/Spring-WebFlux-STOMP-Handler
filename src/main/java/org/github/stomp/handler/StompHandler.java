@@ -62,6 +62,9 @@ public interface StompHandler extends WebSocketHandler {
 		}
 
 		public static AckMode from(String ackMode) {
+			if (ackMode == null) {
+				return null;
+			}
 			for (AckMode mode : AckMode.values()) {
 				if (mode.toString().equalsIgnoreCase(ackMode)) {
 					return mode;
