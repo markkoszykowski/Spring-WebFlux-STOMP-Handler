@@ -51,7 +51,7 @@ public class SimpleStompHandler extends AbstractStompHandler {
 
 	@Override
 	public void doOnEachOutbound(WebSocketSession session, StompMessage outbound) {
-		log.debug("Session {} -> Sending:\n{}", session.getId(), outbound.toString());
+		log.debug("Session {} -> Sending:\n{}", session.getId(), outbound);
 	}
 
 	@Override
