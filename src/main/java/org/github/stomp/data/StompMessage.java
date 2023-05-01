@@ -135,7 +135,7 @@ public class StompMessage {
 	}
 
 	private int capacityGuesstimate() {
-		return command.name().length() + (32 * headers.size()) + (body == null ? 0 : body.length) + 4;
+		return command.name().length() + (64 * headers.size()) + (body == null ? 0 : body.length) + 4;
 	}
 
 	public String toString() {
@@ -158,17 +158,44 @@ public class StompMessage {
 		return sb.toString();
 	}
 
+	private ByteBuffer putInBuffer(ByteBuffer byteBuffer, byte[]... byteArrays) {
+		for (byte[] byteArray : byteArrays) {
+			if (byteBuffer.position() + byteArray.length > byteBuffer.limit()) {
+				int newSize = byteBuffer.limit() << 1;
+				if (newSize < byteBuffer.limit()) {
+					newSize = byteBuffer.limit() + byteArray.length;
+				}
+
+				ByteBuffer temp = byteBuffer;
+				int size = temp.position();
+				temp.rewind().limit(size);
+
+				byteBuffer = ByteBuffer.allocate(newSize);
+				byteBuffer.put(temp);
+			}
+			byteBuffer.put(byteArray);
+		}
+		return byteBuffer;
+	}
+
 	public ByteBuffer toByteBuffer() {
 		ByteBuffer buffer = ByteBuffer.allocate(capacityGuesstimate());
-		buffer.put(command.name().getBytes(DEFAULT_CHARSET)).put(NEWLINE_BYTES);
-		headers.forEach((key, valueList) -> valueList.forEach(value -> {
-			buffer.put(key.getBytes(DEFAULT_CHARSET)).put(HEADER_SEPARATOR_BYTES);
-			Optional.ofNullable(value).map(v -> v.getBytes(DEFAULT_CHARSET)).ifPresent(buffer::put);
-			buffer.put(NEWLINE_BYTES);
-		}));
-		buffer.put(NEWLINE_BYTES);
-		Optional.ofNullable(body).ifPresent(buffer::put);
-		buffer.put(NULL_BYTES);
+		buffer = putInBuffer(buffer, command.name().getBytes(DEFAULT_CHARSET), NEWLINE_BYTES);
+		for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+			byte[] key = entry.getKey().getBytes(DEFAULT_CHARSET);
+			for (String value : entry.getValue()) {
+				buffer = putInBuffer(buffer, key, HEADER_SEPARATOR_BYTES);
+				if (value != null) {
+					buffer = putInBuffer(buffer, value.getBytes(DEFAULT_CHARSET));
+				}
+				buffer = putInBuffer(buffer, NEWLINE_BYTES);
+			}
+		}
+		buffer = putInBuffer(buffer, NEWLINE_BYTES);
+		if (body != null) {
+			buffer = putInBuffer(buffer, body);
+		}
+		buffer = putInBuffer(buffer, NULL_BYTES);
 
 		int size = buffer.position();
 		return buffer.rewind().limit(size).asReadOnlyBuffer();

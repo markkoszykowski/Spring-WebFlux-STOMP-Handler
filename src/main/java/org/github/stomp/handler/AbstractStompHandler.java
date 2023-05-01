@@ -87,11 +87,11 @@ public abstract class AbstractStompHandler implements StompHandler {
 			headers.add(StompHeaderAccessor.STOMP_ACK_HEADER, messageId);
 			message = new StompMessage(StompCommand.MESSAGE, headers, bodyCharset, body);
 
-			ACK_MESSAGE_CACHE.compute(sessionId, (k, v) -> v == null ? new ConcurrentHashMap<>() : v)
+			ACK_MESSAGE_CACHE.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>())
 					.put(messageId, Tuples.of(subscription, message));
 
-			ACK_SUBSCRIPTION_CACHE.compute(sessionId, (k, v) -> v == null ? new ConcurrentHashMap<>() : v)
-					.compute(subscription, (k, v) -> v == null ? new ConcurrentLinkedQueue<>() : v)
+			ACK_SUBSCRIPTION_CACHE.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>())
+					.computeIfAbsent(subscription, k -> new ConcurrentLinkedQueue<>())
 					.add(messageId);
 		}
 		return message;
@@ -251,7 +251,7 @@ public abstract class AbstractStompHandler implements StompHandler {
 		}
 		AckMode ackMode = AckMode.from(inbound.getHeaders().getFirst(StompHeaders.ACK));
 		if (ackMode != null && ackMode != AckMode.AUTO) {
-			ACK_MODE.compute(sessionId, (k, v) -> v == null ? new ConcurrentHashMap<>() : v)
+			ACK_MODE.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>())
 					.put(subscriptionId, ackMode);
 		}
 		return onSubscribe(session, inbound, makeReceipt(sessionId, inbound), destination, subscriptionId);
