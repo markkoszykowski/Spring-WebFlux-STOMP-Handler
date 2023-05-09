@@ -140,15 +140,15 @@ public abstract class AbstractStompHandler implements StompHandler {
 	private static final String DEFAULT_CONTENT_TYPE_STRING = DEFAULT_CONTENT_TYPE.toString();
 
 	private static String getContentLength(String body) {
-		return Optional.ofNullable(body).map(b -> body.getBytes(StompMessage.DEFAULT_CHARSET)).map(AbstractStompHandler::getContentLength).orElse("0");
+		return body == null ? "0" : String.valueOf(body.getBytes(StompMessage.DEFAULT_CHARSET).length);
 	}
 
 	private static String getContentLength(byte[] body) {
-		return Optional.ofNullable(body).map(bytes -> bytes.length).map(String::valueOf).orElse("0");
+		return body == null ? "0" : String.valueOf(body.length);
 	}
 
 	private static String getContentType(MimeType contentType) {
-		return Optional.ofNullable(contentType).map(MimeType::toString).orElse(null);
+		return contentType == null ? null : contentType.toString();
 	}
 
 
@@ -191,15 +191,15 @@ public abstract class AbstractStompHandler implements StompHandler {
 	@Override
 	public Mono<Void> handle(WebSocketSession session) {
 		return session.send(addWebSocketSources(session)
-						.flatMapMany(Flux::merge)
-						.mergeWith(sessionReceiver(session))
-						.switchIfEmpty(sessionReceiver(session))
-						.doOnNext(message -> doOnEachOutbound(session, message))
-						.map(message -> message.toWebSocketMessage(session))
-				).doFinally(signal -> {
-					Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> sessionCaches = handleDisconnect(session);
-					doFinally(session, signal, sessionCaches.getT1().orElse(null), sessionCaches.getT2().orElse(null));
-				});
+				.flatMapMany(Flux::merge)
+				.mergeWith(sessionReceiver(session))
+				.switchIfEmpty(sessionReceiver(session))
+				.doOnNext(message -> doOnEachOutbound(session, message))
+				.map(message -> message.toWebSocketMessage(session))
+		).doFinally(signal -> {
+			Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> sessionCaches = handleDisconnect(session);
+			doFinally(session, signal, sessionCaches.getT1().orElse(null), sessionCaches.getT2().orElse(null));
+		});
 	}
 
 
