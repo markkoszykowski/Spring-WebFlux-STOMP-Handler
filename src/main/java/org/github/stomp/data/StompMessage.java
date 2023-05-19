@@ -109,7 +109,7 @@ public class StompMessage {
 		int contentLength = Optional.ofNullable(headers.getFirst(StompHeaders.CONTENT_LENGTH)).map(Integer::parseUnsignedInt).orElse(-1);
 		bodyCharset = HttpUtil.getCharset(headers.getFirst(StompHeaders.CONTENT_TYPE), DEFAULT_CHARSET);
 		byte[] temp = message.getPayload();
-		body = contentLength == -1 || contentLength >= temp.length ? temp : Arrays.copyOf(message.getPayload(), contentLength);
+		body = contentLength == -1 || contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
 	}
 
 	public static StompMessage from(WebSocketMessage socketMessage) {
