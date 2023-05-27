@@ -5,7 +5,6 @@ import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.SignalType;
 import reactor.util.function.Tuple2;
 
 import java.util.List;
@@ -49,7 +48,6 @@ public interface StompHandler extends WebSocketHandler {
 		return supportedVersions().stream().map(Version::toString).map(v -> String.format("STOMP %s", v)).collect(Collectors.toList());
 	}
 
-
 	enum AckMode {
 		AUTO("auto"),
 		CLIENT("client"),
@@ -78,7 +76,6 @@ public interface StompHandler extends WebSocketHandler {
 		}
 	}
 
-
 	/**
 	 * Adds STOMP frame sources from which frames are forwarded to the websocket client.
 	 *
@@ -95,7 +92,8 @@ public interface StompHandler extends WebSocketHandler {
 	 * @param session The associated websocket session.
 	 * @param inbound The inbound STOMP frame.
 	 */
-	default void doOnEachInbound(WebSocketSession session, StompMessage inbound) {
+	default Mono<Void> doOnEachInbound(WebSocketSession session, StompMessage inbound) {
+		return Mono.empty();
 	}
 
 	/**
@@ -104,7 +102,8 @@ public interface StompHandler extends WebSocketHandler {
 	 * @param session  The associated websocket session.
 	 * @param outbound The outbound STOMP frame.
 	 */
-	default void doOnEachOutbound(WebSocketSession session, StompMessage outbound) {
+	default Mono<Void> doOnEachOutbound(WebSocketSession session, StompMessage outbound) {
+		return Mono.empty();
 	}
 
 	/**
@@ -113,13 +112,13 @@ public interface StompHandler extends WebSocketHandler {
 	 * by the client.
 	 *
 	 * @param session                     The terminated session.
-	 * @param signal                      The terminating signal type of the websocket session.
 	 * @param messagesQueueBySubscription The map of subscriptionIds mapped to the queue of unacknowledged outbound messageIds expecting an acknowledgement. May be <code>null</code>
 	 * @param messagesCache               The map of messageIds mapped to the tuples of subscriptionIds and unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
 	 * @see StompHandler#onDisconnect(WebSocketSession, StompMessage, StompMessage, Map, Map)
 	 * @see StompHandler#onError(WebSocketSession, StompMessage, StompMessage, Map, Map)
 	 */
-	default void doFinally(WebSocketSession session, SignalType signal, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
+	default Mono<Void> doFinally(WebSocketSession session, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
+		return Mono.empty();
 	}
 
 	/**
@@ -267,7 +266,7 @@ public interface StompHandler extends WebSocketHandler {
 	 * @param outbound                    The potential outbound server frame. May be <code>null</code>
 	 * @param messagesQueueBySubscription The map of subscriptionIds mapped to the queue of unacknowledged outbound messageIds expecting an acknowledgement. May be <code>null</code>
 	 * @param messagesCache               The map of messageIds mapped to the tuples of subscriptionIds and unacknowledged outbound messages expecting an acknowledgement. May be <code>null</code>
-	 * @see StompHandler#doFinally(WebSocketSession, SignalType, Map, Map)
+	 * @see StompHandler#doFinally(WebSocketSession, Map, Map)
 	 * @see StompHandler#onError(WebSocketSession, StompMessage, StompMessage, Map, Map)
 	 */
 	default Mono<StompMessage> onDisconnect(WebSocketSession session, StompMessage inbound, StompMessage outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
@@ -284,7 +283,7 @@ public interface StompHandler extends WebSocketHandler {
 	 * @param outbound                    The potential outbound server frame.
 	 * @param messagesQueueBySubscription The map of subscriptionIds mapped to the queue of unacknowledged outbound messageIds expecting an acknowledgement. May be <code>null</code>
 	 * @param messagesCache               The map of messageIds mapped to the tuples of subscriptionIds and unacknowledged outbound messages expecting an acknowledgement. May be <code>null</code>
-	 * @see StompHandler#doFinally(WebSocketSession, SignalType, Map, Map)
+	 * @see StompHandler#doFinally(WebSocketSession, Map, Map)
 	 * @see StompHandler#onDisconnect(WebSocketSession, StompMessage, StompMessage, Map, Map)
 	 */
 	default Mono<StompMessage> onError(WebSocketSession session, StompMessage inbound, StompMessage outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {

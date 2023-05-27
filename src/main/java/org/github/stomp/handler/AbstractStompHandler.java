@@ -130,7 +130,6 @@ public abstract class AbstractStompHandler implements StompHandler {
 		return new StompMessage(StompCommand.ERROR, headers, errorBody);
 	}
 
-
 	// Header Keys
 	public static final String SESSION = "session";
 	public static final String TRANSACTION = "transaction";
@@ -151,7 +150,6 @@ public abstract class AbstractStompHandler implements StompHandler {
 		return contentType == null ? null : contentType.toString();
 	}
 
-
 	// Caches
 	// SessionId -> SubscriptionId -> ACK Mode
 	private static final ConcurrentHashMap<String, ConcurrentHashMap<String, AckMode>> ACK_MODE = new ConcurrentHashMap<>();
@@ -159,7 +157,6 @@ public abstract class AbstractStompHandler implements StompHandler {
 	private static final ConcurrentHashMap<String, ConcurrentHashMap<String, Tuple2<String, StompMessage>>> ACK_MESSAGE_CACHE = new ConcurrentHashMap<>();
 	// SessionId -> SubscriptionId -> [MessageId, ...]
 	private static final ConcurrentHashMap<String, ConcurrentHashMap<String, ConcurrentLinkedQueue<String>>> ACK_SUBSCRIPTION_CACHE = new ConcurrentHashMap<>();
-
 
 	private final Map<StompCommand, BiFunction<WebSocketSession, StompMessage, Mono<StompMessage>>> handler = Map.ofEntries(
 			entry(StompCommand.STOMP, this::handleStomp),
@@ -175,12 +172,11 @@ public abstract class AbstractStompHandler implements StompHandler {
 			entry(StompCommand.DISCONNECT, this::handleDisconnect)
 	);
 
-
 	private Flux<StompMessage> sessionReceiver(WebSocketSession session) {
 		return session.receive()
 				.map(StompMessage::from)
-				.doOnNext(message -> doOnEachInbound(session, message))
-				.takeUntil(message -> StompCommand.DISCONNECT.equals(message.getCommand()))
+				.flatMap(message -> doOnEachInbound(session, message).then(Mono.just(message)))
+				.takeUntil(message -> message.getCommand() == StompCommand.DISCONNECT)
 				.flatMap(inbound -> handler.get(inbound.getCommand()).apply(session, inbound)
 						.flatMap(outbound -> outbound.error() ? handleError(session, inbound, outbound) : Mono.just(outbound)))
 				.takeUntil(StompMessage::error)
@@ -194,14 +190,13 @@ public abstract class AbstractStompHandler implements StompHandler {
 				.flatMapMany(Flux::merge)
 				.mergeWith(sessionReceiver(session))
 				.switchIfEmpty(sessionReceiver(session))
-				.doOnNext(message -> doOnEachOutbound(session, message))
+				.flatMap(message -> doOnEachOutbound(session, message).then(Mono.just(message)))
 				.map(message -> message.toWebSocketMessage(session))
-		).doFinally(signal -> {
+		).then(Mono.defer(() -> {
 			Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> sessionCaches = handleDisconnect(session);
-			doFinally(session, signal, sessionCaches.getT1().orElse(null), sessionCaches.getT2().orElse(null));
-		});
+			return doFinally(session, sessionCaches.getT1().orElse(null), sessionCaches.getT2().orElse(null));
+		}));
 	}
-
 
 	private Mono<StompMessage> handleProtocolNegotiation(WebSocketSession session, StompMessage inbound, QuintFunction<WebSocketSession, StompMessage, StompMessage, Version, String, Mono<StompMessage>> onFunction) {
 		String versionsString = inbound.getHeaders().getFirst(StompHeaders.ACCEPT_VERSION);
@@ -373,7 +368,6 @@ public abstract class AbstractStompHandler implements StompHandler {
 		Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> sessionCaches = handleDisconnect(session);
 		return onError(session, inbound, outbound, sessionCaches.getT1().orElse(null), sessionCaches.getT2().orElse(null));
 	}
-
 
 	@FunctionalInterface
 	public interface QuadConsumer<T, U, V, W> {

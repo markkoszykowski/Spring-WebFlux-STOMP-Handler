@@ -127,7 +127,7 @@ public class StompMessage {
 	}
 
 	public boolean error() {
-		return StompCommand.ERROR.equals(command);
+		return command == StompCommand.ERROR;
 	}
 
 	public StompMessage.StompMessageBuilder mutate() {

@@ -8,7 +8,6 @@ import org.springframework.util.MimeType;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.SignalType;
 import reactor.core.publisher.Sinks;
 import reactor.util.function.Tuple2;
 
@@ -45,19 +44,22 @@ public class SimpleStompHandler extends AbstractStompHandler {
 	}
 
 	@Override
-	public void doOnEachInbound(WebSocketSession session, StompMessage inbound) {
+	public Mono<Void> doOnEachInbound(WebSocketSession session, StompMessage inbound) {
 		log.debug("Session {} -> Receiving:\n{}", session.getId(), inbound);
+		return super.doOnEachInbound(session, inbound);
 	}
 
 	@Override
-	public void doOnEachOutbound(WebSocketSession session, StompMessage outbound) {
+	public Mono<Void> doOnEachOutbound(WebSocketSession session, StompMessage outbound) {
 		log.debug("Session {} -> Sending:\n{}", session.getId(), outbound);
+		return super.doOnEachOutbound(session, outbound);
 	}
 
 	@Override
-	public void doFinally(WebSocketSession session, SignalType signal, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
+	public Mono<Void> doFinally(WebSocketSession session, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
 		sessionCounters.remove(session.getId());
-		log.info("Closing session {} with signalType {}", session.getId(), signal.name());
+		log.info("Closing session {}", session.getId());
+		return super.doFinally(session, messagesQueueBySubscription, messagesCache);
 	}
 
 	@Override
