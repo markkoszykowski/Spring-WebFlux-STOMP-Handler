@@ -3,6 +3,7 @@ package org.github.stomp.server;
 import lombok.extern.slf4j.Slf4j;
 import org.github.stomp.server.StompServer.AckMode;
 import org.github.stomp.server.StompServer.Version;
+import org.springframework.lang.NonNull;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.simp.stomp.StompHeaders;
@@ -36,6 +37,7 @@ final class StompHandler implements WebSocketHandler {
 
 	static final List<Version> SUPPORTED_VERSIONS = List.of(Version.v1_2, Version.v1_1, Version.v1_0);
 
+	@NonNull
 	@Override
 	public List<String> getSubProtocols() {
 		return SUPPORTED_VERSIONS.stream()
@@ -79,6 +81,7 @@ final class StompHandler implements WebSocketHandler {
 				.doFinally(signalType -> session.close().subscribeOn(Schedulers.immediate()).subscribe());
 	}
 
+	@NonNull
 	@Override
 	public Mono<Void> handle(WebSocketSession session) {
 		return session.send(server.addWebSocketSources(session)
