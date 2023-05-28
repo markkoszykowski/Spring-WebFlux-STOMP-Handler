@@ -30,15 +30,15 @@ public class StompMessage {
 
 	public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
-	private static final String NULL = "\0";
-	private static final String NEWLINE = "\n";
-	private static final String HEADER_SEPARATOR = ":";
+	static final String NULL = "\0";
+	static final String NEWLINE = "\n";
+	static final String HEADER_SEPARATOR = ":";
 
-	private static final byte[] NULL_BYTES = NULL.getBytes(DEFAULT_CHARSET);
-	private static final byte[] NEWLINE_BYTES = NEWLINE.getBytes(DEFAULT_CHARSET);
-	private static final byte[] HEADER_SEPARATOR_BYTES = HEADER_SEPARATOR.getBytes(DEFAULT_CHARSET);
+	static final byte[] NULL_BYTES = NULL.getBytes(DEFAULT_CHARSET);
+	static final byte[] NEWLINE_BYTES = NEWLINE.getBytes(DEFAULT_CHARSET);
+	static final byte[] HEADER_SEPARATOR_BYTES = HEADER_SEPARATOR.getBytes(DEFAULT_CHARSET);
 
-	private static final StompDecoder decoder = new StompDecoder();
+	static final StompDecoder decoder = new StompDecoder();
 
 	final StompCommand command;
 	final MultiValueMap<String, String> headers;
@@ -113,7 +113,7 @@ public class StompMessage {
 		this.body = body == null ? null : body.getBytes(DEFAULT_CHARSET);
 	}
 
-	private StompMessage(WebSocketMessage socketMessage) {
+	StompMessage(WebSocketMessage socketMessage) {
 		DataBuffer dataBuffer = socketMessage.getPayload();
 		ByteBuffer byteBuffer = ByteBuffer.allocate(dataBuffer.readableByteCount());
 		dataBuffer.toByteBuffer(byteBuffer);
@@ -133,14 +133,24 @@ public class StompMessage {
 		return new StompMessage(socketMessage);
 	}
 
-	private static void appendBinaryRepresentation(StringBuilder sb, byte[] bytes) {
-		for (byte b : bytes) {
-			sb.append(Integer.toBinaryString(b & 255 | 256).substring(1));
+	static MultiValueMap<String, String> deepCopy(MultiValueMap<String, String> map) {
+		MultiValueMap<String, String> multiValueMap = new LinkedMultiValueMap<>();
+		for (Map.Entry<String, List<String>> entry : map.entrySet()) {
+			for (String value : entry.getValue()) {
+				multiValueMap.add(entry.getKey(), value);
+			}
 		}
+		return multiValueMap;
 	}
 
 	public MultiValueMap<String, String> getHeaders() {
 		return CollectionUtils.unmodifiableMultiValueMap(this.headers);
+	}
+
+	static void appendBinaryRepresentation(StringBuilder sb, byte[] bytes) {
+		for (byte b : bytes) {
+			sb.append(Integer.toBinaryString(b & 255 | 256).substring(1));
+		}
 	}
 
 	public String getCommandString() {
@@ -155,7 +165,7 @@ public class StompMessage {
 		return StompMessage.builder().command(command).headers(headers).bodyCharset(bodyCharset).body(body);
 	}
 
-	private int capacityGuesstimate() {
+	int capacityGuesstimate() {
 		return command.name().length() + (64 * headers.size()) + (body == null ? 0 : body.length) + 4;
 	}
 
@@ -179,7 +189,7 @@ public class StompMessage {
 		return sb.toString();
 	}
 
-	private ByteBuffer putInBuffer(ByteBuffer byteBuffer, byte[]... byteArrays) {
+	ByteBuffer putInBuffer(ByteBuffer byteBuffer, byte[]... byteArrays) {
 		for (byte[] byteArray : byteArrays) {
 			if (byteBuffer.position() + byteArray.length > byteBuffer.limit()) {
 				int newSize = byteBuffer.limit() << 1;
@@ -224,16 +234,6 @@ public class StompMessage {
 
 	public WebSocketMessage toWebSocketMessage(WebSocketSession session) {
 		return new WebSocketMessage(WebSocketMessage.Type.TEXT, session.bufferFactory().wrap(toByteBuffer()));
-	}
-
-	private static MultiValueMap<String, String> deepCopy(MultiValueMap<String, String> map) {
-		MultiValueMap<String, String> multiValueMap = new LinkedMultiValueMap<>();
-		for (Map.Entry<String, List<String>> entry : map.entrySet()) {
-			for (String value : entry.getValue()) {
-				multiValueMap.add(entry.getKey(), value);
-			}
-		}
-		return multiValueMap;
 	}
 
 }

@@ -18,18 +18,18 @@ public class StompUtils {
 	public static final String TRANSACTION = "transaction";
 
 	// Header Utils
-	private static final MimeType DEFAULT_CONTENT_TYPE = new MimeType(MediaType.TEXT_PLAIN, StompMessage.DEFAULT_CHARSET);
-	private static final String DEFAULT_CONTENT_TYPE_STRING = DEFAULT_CONTENT_TYPE.toString();
+	static final MimeType DEFAULT_CONTENT_TYPE = new MimeType(MediaType.TEXT_PLAIN, StompMessage.DEFAULT_CHARSET);
+	static final String DEFAULT_CONTENT_TYPE_STRING = DEFAULT_CONTENT_TYPE.toString();
 
-	private static String getContentLength(String body) {
+	static String getContentLength(String body) {
 		return body == null ? "0" : String.valueOf(body.getBytes(StompMessage.DEFAULT_CHARSET).length);
 	}
 
-	private static String getContentLength(byte[] body) {
+	static String getContentLength(byte[] body) {
 		return body == null ? "0" : String.valueOf(body.length);
 	}
 
-	private static String getContentType(MimeType contentType) {
+	static String getContentType(MimeType contentType) {
 		return contentType == null ? null : contentType.toString();
 	}
 
@@ -88,7 +88,9 @@ public class StompUtils {
 			return null;
 		}
 		log.debug("Creating receipt for: sessionId={} command={} body={}", sessionId, inbound.getCommandString(), inbound.getBody());
-		return new StompMessage(StompCommand.RECEIPT, Map.of(StompHeaderAccessor.STOMP_RECEIPT_ID_HEADER, Collections.singletonList(receipt)));
+		return new StompMessage(StompCommand.RECEIPT, CollectionUtils.toMultiValueMap(Map.of(
+				StompHeaderAccessor.STOMP_RECEIPT_ID_HEADER, Collections.singletonList(receipt)
+		)), false);
 	}
 
 	static StompMessage makeMalformedError(String sessionId, StompMessage inbound) {
@@ -112,7 +114,7 @@ public class StompUtils {
 				.flatMap(Set::stream)
 				.forEach(pair -> headers.addAll(pair.getKey(), pair.getValue()));
 		log.error("Creating error for: sessionId={} command={} body={} error={}", sessionId, inbound.getCommandString(), inbound.getBody(), errorHeader);
-		return new StompMessage(StompCommand.ERROR, headers, errorBody);
+		return new StompMessage(StompCommand.ERROR, headers, errorBody, false);
 	}
 
 }

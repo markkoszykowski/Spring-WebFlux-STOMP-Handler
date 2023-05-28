@@ -30,11 +30,11 @@ final class StompHandler implements WebSocketHandler {
 
 	final StompServer server;
 
-	public StompHandler(StompServer server) {
+	StompHandler(StompServer server) {
 		this.server = server;
 	}
 
-	public static final List<Version> SUPPORTED_VERSIONS = List.of(Version.v1_2, Version.v1_1, Version.v1_0);
+	static final List<Version> SUPPORTED_VERSIONS = List.of(Version.v1_2, Version.v1_1, Version.v1_0);
 
 	@Override
 	public List<String> getSubProtocols() {
@@ -52,7 +52,7 @@ final class StompHandler implements WebSocketHandler {
 	// SessionId -> SubscriptionId -> [MessageId, ...]
 	final ConcurrentHashMap<String, ConcurrentHashMap<String, ConcurrentLinkedQueue<String>>> ackSubscriptionCache = new ConcurrentHashMap<>();
 
-	private final Map<StompCommand, BiFunction<WebSocketSession, StompMessage, Mono<StompMessage>>> handler = Map.ofEntries(
+	final Map<StompCommand, BiFunction<WebSocketSession, StompMessage, Mono<StompMessage>>> handler = Map.ofEntries(
 			entry(StompCommand.STOMP, this::handleStomp),
 			entry(StompCommand.CONNECT, this::handleConnect),
 			entry(StompCommand.SEND, this::handleSend),
@@ -66,7 +66,7 @@ final class StompHandler implements WebSocketHandler {
 			entry(StompCommand.DISCONNECT, this::handleDisconnect)
 	);
 
-	private Flux<StompMessage> sessionReceiver(WebSocketSession session) {
+	Flux<StompMessage> sessionReceiver(WebSocketSession session) {
 		return session.receive()
 				.map(StompMessage::from)
 				.flatMap(message -> server.doOnEachInbound(session, message).then(Mono.just(message)))
@@ -93,7 +93,7 @@ final class StompHandler implements WebSocketHandler {
 		}));
 	}
 
-	private Mono<StompMessage> handleProtocolNegotiation(WebSocketSession session, StompMessage inbound, QuintFunction<WebSocketSession, StompMessage, StompMessage, Version, String, Mono<StompMessage>> onFunction) {
+	Mono<StompMessage> handleProtocolNegotiation(WebSocketSession session, StompMessage inbound, QuintFunction<WebSocketSession, StompMessage, StompMessage, Version, String, Mono<StompMessage>> onFunction) {
 		String versionsString = inbound.getHeaders().getFirst(StompHeaders.ACCEPT_VERSION);
 		Version usingVersion;
 		if (versionsString == null) {
@@ -106,8 +106,8 @@ final class StompHandler implements WebSocketHandler {
 		if (usingVersion == null) {
 			String serverVersionsHeader = SUPPORTED_VERSIONS.stream().sorted(Comparator.comparing(Version::version)).map(Version::toString).collect(Collectors.joining(","));
 			String serverVersionsBody = SUPPORTED_VERSIONS.stream().sorted(Comparator.comparing(Version::version)).map(Version::toString).collect(Collectors.joining(" "));
-			return Mono.just(StompUtils.makeError(session.getId(), inbound, CollectionUtils.toMultiValueMap(Map.ofEntries(
-					entry(StompHeaderAccessor.STOMP_VERSION_HEADER, Collections.singletonList(serverVersionsHeader))
+			return Mono.just(StompUtils.makeError(session.getId(), inbound, CollectionUtils.toMultiValueMap(Map.of(
+					StompHeaderAccessor.STOMP_VERSION_HEADER, Collections.singletonList(serverVersionsHeader)
 			)), "Unsupported protocol versions", String.format("Supported protocol versions are %s", serverVersionsBody)));
 		}
 		return onFunction.apply(session, inbound, new StompMessage(StompCommand.CONNECTED, new LinkedMultiValueMap<>() {{
@@ -116,15 +116,15 @@ final class StompHandler implements WebSocketHandler {
 		}}, false), usingVersion, host);
 	}
 
-	private Mono<StompMessage> handleStomp(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleStomp(WebSocketSession session, StompMessage inbound) {
 		return handleProtocolNegotiation(session, inbound, server::onStomp);
 	}
 
-	private Mono<StompMessage> handleConnect(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleConnect(WebSocketSession session, StompMessage inbound) {
 		return handleProtocolNegotiation(session, inbound, server::onConnect);
 	}
 
-	private Mono<StompMessage> handleSend(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleSend(WebSocketSession session, StompMessage inbound) {
 		String destination = inbound.getHeaders().getFirst(StompHeaders.DESTINATION);
 		if (destination == null) {
 			return Mono.just(StompUtils.makeMalformedError(session.getId(), inbound));
@@ -132,7 +132,7 @@ final class StompHandler implements WebSocketHandler {
 		return server.onSend(session, inbound, StompUtils.makeReceipt(session.getId(), inbound), destination);
 	}
 
-	private Mono<StompMessage> handleSubscribe(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleSubscribe(WebSocketSession session, StompMessage inbound) {
 		String sessionId = session.getId();
 		String destination = inbound.getHeaders().getFirst(StompHeaders.DESTINATION);
 		String subscriptionId = inbound.getHeaders().getFirst(StompHeaders.ID);
@@ -147,7 +147,7 @@ final class StompHandler implements WebSocketHandler {
 		return server.onSubscribe(session, inbound, StompUtils.makeReceipt(sessionId, inbound), destination, subscriptionId);
 	}
 
-	private Mono<StompMessage> handleUnsubscribe(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleUnsubscribe(WebSocketSession session, StompMessage inbound) {
 		String sessionId = session.getId();
 		String subscriptionId = inbound.getHeaders().getFirst(StompHeaders.ID);
 		if (subscriptionId == null) {
@@ -165,9 +165,9 @@ final class StompHandler implements WebSocketHandler {
 		return server.onUnsubscribe(session, inbound, StompUtils.makeReceipt(sessionId, inbound), subscriptionId);
 	}
 
-	private Mono<StompMessage> handleAckOrNack(WebSocketSession session, StompMessage inbound,
-											   QuadConsumer<AckMode, ConcurrentHashMap<String, Tuple2<String, StompMessage>>, List<Tuple2<String, StompMessage>>, String> removeMessage,
-											   QuintFunction<WebSocketSession, StompMessage, StompMessage, String, List<Tuple2<String, StompMessage>>, Mono<StompMessage>> onFunction) {
+	Mono<StompMessage> handleAckOrNack(WebSocketSession session, StompMessage inbound,
+									   QuadConsumer<AckMode, ConcurrentHashMap<String, Tuple2<String, StompMessage>>, List<Tuple2<String, StompMessage>>, String> removeMessage,
+									   QuintFunction<WebSocketSession, StompMessage, StompMessage, String, List<Tuple2<String, StompMessage>>, Mono<StompMessage>> onFunction) {
 		String sessionId = session.getId();
 		String messageId = inbound.getHeaders().getFirst(StompHeaders.ID);
 		if (messageId == null) {
@@ -206,14 +206,14 @@ final class StompHandler implements WebSocketHandler {
 		return onFunction.apply(session, inbound, StompUtils.makeReceipt(sessionId, inbound), messageId, ackOrNackMessages);
 	}
 
-	private Mono<StompMessage> handleAck(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleAck(WebSocketSession session, StompMessage inbound) {
 		return handleAckOrNack(session, inbound,
 				(ackMode, cache, messages, id) -> Optional.ofNullable(cache.remove(id)).ifPresent(messages::add),
 				server::onAck
 		);
 	}
 
-	private Mono<StompMessage> handleNack(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleNack(WebSocketSession session, StompMessage inbound) {
 		return handleAckOrNack(session, inbound,
 				(ackMode, cache, messages, id) -> Optional.ofNullable(cache.remove(id))
 						.ifPresent(messageInfo -> {
@@ -224,8 +224,8 @@ final class StompHandler implements WebSocketHandler {
 		);
 	}
 
-	private Mono<StompMessage> handleTransactionFrame(WebSocketSession session, StompMessage inbound,
-													  QuadFunction<WebSocketSession, StompMessage, StompMessage, String, Mono<StompMessage>> onFunction) {
+	Mono<StompMessage> handleTransactionFrame(WebSocketSession session, StompMessage inbound,
+											  QuadFunction<WebSocketSession, StompMessage, StompMessage, String, Mono<StompMessage>> onFunction) {
 		String transaction = inbound.getHeaders().getFirst(StompUtils.TRANSACTION);
 		if (transaction == null) {
 			return Mono.just(StompUtils.makeMalformedError(session.getId(), inbound));
@@ -233,19 +233,19 @@ final class StompHandler implements WebSocketHandler {
 		return onFunction.apply(session, inbound, StompUtils.makeReceipt(session.getId(), inbound), transaction);
 	}
 
-	private Mono<StompMessage> handleBegin(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleBegin(WebSocketSession session, StompMessage inbound) {
 		return handleTransactionFrame(session, inbound, server::onBegin);
 	}
 
-	private Mono<StompMessage> handleCommit(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleCommit(WebSocketSession session, StompMessage inbound) {
 		return handleTransactionFrame(session, inbound, server::onCommit);
 	}
 
-	private Mono<StompMessage> handleAbort(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleAbort(WebSocketSession session, StompMessage inbound) {
 		return handleTransactionFrame(session, inbound, server::onAbort);
 	}
 
-	private Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> handleDisconnect(WebSocketSession session) {
+	Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> handleDisconnect(WebSocketSession session) {
 		String sessionId = session.getId();
 		ackModeCache.remove(sessionId);
 		return Tuples.of(
@@ -254,17 +254,17 @@ final class StompHandler implements WebSocketHandler {
 		);
 	}
 
-	private Mono<StompMessage> handleDisconnect(WebSocketSession session, StompMessage inbound) {
+	Mono<StompMessage> handleDisconnect(WebSocketSession session, StompMessage inbound) {
 		Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> sessionCaches = handleDisconnect(session);
 		return server.onDisconnect(session, inbound, StompUtils.makeReceipt(session.getId(), inbound), sessionCaches.getT1().orElse(null), sessionCaches.getT2().orElse(null));
 	}
 
-	private Mono<StompMessage> handleError(WebSocketSession session, StompMessage inbound, StompMessage outbound) {
+	Mono<StompMessage> handleError(WebSocketSession session, StompMessage inbound, StompMessage outbound) {
 		Tuple2<Optional<Map<String, ConcurrentLinkedQueue<String>>>, Optional<Map<String, Tuple2<String, StompMessage>>>> sessionCaches = handleDisconnect(session);
 		return server.onError(session, inbound, outbound, sessionCaches.getT1().orElse(null), sessionCaches.getT2().orElse(null));
 	}
 
-	private void cacheMessageForAck(WebSocketSession session, StompMessage outbound) {
+	void cacheMessageForAck(WebSocketSession session, StompMessage outbound) {
 		if (outbound.getCommand() != StompCommand.MESSAGE) {
 			return;
 		}
@@ -285,17 +285,17 @@ final class StompHandler implements WebSocketHandler {
 	}
 
 	@FunctionalInterface
-	public interface QuadConsumer<T, U, V, W> {
+	interface QuadConsumer<T, U, V, W> {
 		void accept(T t, U u, V v, W w);
 	}
 
 	@FunctionalInterface
-	public interface QuadFunction<T, U, V, W, R> {
+	interface QuadFunction<T, U, V, W, R> {
 		R apply(T t, U u, V v, W w);
 	}
 
 	@FunctionalInterface
-	public interface QuintFunction<T, U, V, W, X, R> {
+	interface QuintFunction<T, U, V, W, X, R> {
 		R apply(T t, U u, V v, W w, X x);
 	}
 

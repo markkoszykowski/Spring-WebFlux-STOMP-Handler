@@ -94,7 +94,9 @@ public class ComplexStompServer implements StompServer {
 		Charset charset = StandardCharsets.UTF_16LE;
 		String body = "You didn't want a receipt... But you get this instead:\nCongrats! You have subscribed!";
 		byte[] bodyBytes = body.getBytes(charset);
-		return Mono.just(StompUtils.makeMessage(session.getId(), destination, subscriptionId, Map.of("congrats", Collections.singletonList("you're subscribed!")), new MimeType(MediaType.TEXT_PLAIN, charset), bodyBytes));
+		return Mono.just(StompUtils.makeMessage(session.getId(), destination, subscriptionId, Map.of(
+				"congrats", Collections.singletonList("you're subscribed!")
+		), new MimeType(MediaType.TEXT_PLAIN, charset), bodyBytes));
 	}
 
 	@Override

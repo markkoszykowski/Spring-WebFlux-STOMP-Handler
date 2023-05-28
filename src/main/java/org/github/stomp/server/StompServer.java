@@ -23,8 +23,8 @@ public interface StompServer {
 		v1_1("1.1"),
 		v1_2("1.2");
 
-		private final Float floatVersion;
-		private final String version;
+		final Float floatVersion;
+		final String version;
 
 		Version(String version) {
 			this.version = version;
@@ -45,7 +45,7 @@ public interface StompServer {
 		CLIENT("client"),
 		CLIENT_INDIVIDUAL("client-individual");
 
-		private final String ackMode;
+		final String ackMode;
 
 		AckMode(String ackMode) {
 			this.ackMode = ackMode;
