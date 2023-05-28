@@ -1,4 +1,4 @@
-package org.github.stomp.data;
+package org.github.stomp.server;
 
 import io.netty.handler.codec.http.HttpUtil;
 import lombok.Builder;
@@ -11,6 +11,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
@@ -39,20 +40,24 @@ public class StompMessage {
 
 	private static final StompDecoder decoder = new StompDecoder();
 
-	private final StompCommand command;
-	private final MultiValueMap<String, String> headers;
-	private final Charset bodyCharset;
-	private final byte[] body;
+	final StompCommand command;
+	final MultiValueMap<String, String> headers;
+	final Charset bodyCharset;
+	final byte[] body;
 
 	public StompMessage(StompCommand command, Map<String, List<String>> headers) {
 		this(command, CollectionUtils.toMultiValueMap(headers));
 	}
 
 	public StompMessage(StompCommand command, MultiValueMap<String, String> headers) {
+		this(command, headers, true);
+	}
+
+	StompMessage(StompCommand command, MultiValueMap<String, String> headers, boolean deepCopy) {
 		Assert.notNull(command, "Command must not be null");
 		Assert.notNull(headers, "Headers must not be null");
 		this.command = command;
-		this.headers = CollectionUtils.unmodifiableMultiValueMap(headers);
+		this.headers = deepCopy ? deepCopy(headers) : headers;
 		this.bodyCharset = null;
 		this.body = null;
 	}
@@ -62,10 +67,14 @@ public class StompMessage {
 	}
 
 	public StompMessage(StompCommand command, MultiValueMap<String, String> headers, byte[] body) {
+		this(command, headers, body, true);
+	}
+
+	StompMessage(StompCommand command, MultiValueMap<String, String> headers, byte[] body, boolean deepCopy) {
 		Assert.notNull(command, "Command must not be null");
 		Assert.notNull(headers, "Headers must not be null");
 		this.command = command;
-		this.headers = CollectionUtils.unmodifiableMultiValueMap(headers);
+		this.headers = deepCopy ? deepCopy(headers) : headers;
 		this.bodyCharset = HttpUtil.getCharset(headers.getFirst(StompHeaders.CONTENT_TYPE), DEFAULT_CHARSET);
 		this.body = body;
 	}
@@ -75,10 +84,14 @@ public class StompMessage {
 	}
 
 	public StompMessage(StompCommand command, MultiValueMap<String, String> headers, Charset charset, byte[] body) {
+		this(command, headers, charset, body, true);
+	}
+
+	StompMessage(StompCommand command, MultiValueMap<String, String> headers, Charset charset, byte[] body, boolean deepCopy) {
 		Assert.notNull(command, "Command must not be null");
 		Assert.notNull(headers, "Headers must not be null");
 		this.command = command;
-		this.headers = CollectionUtils.unmodifiableMultiValueMap(headers);
+		this.headers = deepCopy ? deepCopy(headers) : headers;
 		this.bodyCharset = charset;
 		this.body = body;
 	}
@@ -88,10 +101,14 @@ public class StompMessage {
 	}
 
 	public StompMessage(StompCommand command, MultiValueMap<String, String> headers, String body) {
+		this(command, headers, body, true);
+	}
+
+	StompMessage(StompCommand command, MultiValueMap<String, String> headers, String body, boolean deepCopy) {
 		Assert.notNull(command, "Command must not be null");
 		Assert.notNull(headers, "Headers must not be null");
 		this.command = command;
-		this.headers = CollectionUtils.unmodifiableMultiValueMap(headers);
+		this.headers = deepCopy ? deepCopy(headers) : headers;
 		this.bodyCharset = DEFAULT_CHARSET;
 		this.body = body == null ? null : body.getBytes(DEFAULT_CHARSET);
 	}
@@ -105,7 +122,7 @@ public class StompMessage {
 		StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
 		command = accessor.getCommand();
-		headers = CollectionUtils.unmodifiableMultiValueMap(CollectionUtils.toMultiValueMap(accessor.toNativeHeaderMap()));
+		headers = CollectionUtils.toMultiValueMap(accessor.toNativeHeaderMap());
 		int contentLength = Optional.ofNullable(headers.getFirst(StompHeaders.CONTENT_LENGTH)).map(Integer::parseUnsignedInt).orElse(-1);
 		bodyCharset = HttpUtil.getCharset(headers.getFirst(StompHeaders.CONTENT_TYPE), DEFAULT_CHARSET);
 		byte[] temp = message.getPayload();
@@ -120,6 +137,10 @@ public class StompMessage {
 		for (byte b : bytes) {
 			sb.append(Integer.toBinaryString(b & 255 | 256).substring(1));
 		}
+	}
+
+	public MultiValueMap<String, String> getHeaders() {
+		return CollectionUtils.unmodifiableMultiValueMap(this.headers);
 	}
 
 	public String getCommandString() {
@@ -203,6 +224,16 @@ public class StompMessage {
 
 	public WebSocketMessage toWebSocketMessage(WebSocketSession session) {
 		return new WebSocketMessage(WebSocketMessage.Type.TEXT, session.bufferFactory().wrap(toByteBuffer()));
+	}
+
+	private static MultiValueMap<String, String> deepCopy(MultiValueMap<String, String> map) {
+		MultiValueMap<String, String> multiValueMap = new LinkedMultiValueMap<>();
+		for (Map.Entry<String, List<String>> entry : map.entrySet()) {
+			for (String value : entry.getValue()) {
+				multiValueMap.add(entry.getKey(), value);
+			}
+		}
+		return multiValueMap;
 	}
 
 }

@@ -1,7 +1,5 @@
-package org.github.stomp.handler;
+package org.github.stomp.server;
 
-import org.github.stomp.data.StompMessage;
-import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -10,9 +8,15 @@ import reactor.util.function.Tuple2;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.stream.Collectors;
 
-public interface StompHandler extends WebSocketHandler {
+public interface StompServer {
+
+	/**
+	 * Returns web path of the STOMP server endpoint.
+	 *
+	 * @return The web path of the STOMP server endpoint.
+	 */
+	String path();
 
 	enum Version {
 		v1_0("1.0"),
@@ -34,18 +38,6 @@ public interface StompHandler extends WebSocketHandler {
 		public String toString() {
 			return version;
 		}
-	}
-
-	/**
-	 * Returns supported STOMP versions of implementation.
-	 *
-	 * @return The list of supported STOMP versions.
-	 */
-	List<Version> supportedVersions();
-
-	@Override
-	default List<String> getSubProtocols() {
-		return supportedVersions().stream().map(Version::toString).map(v -> String.format("STOMP %s", v)).collect(Collectors.toList());
 	}
 
 	enum AckMode {
@@ -114,8 +106,8 @@ public interface StompHandler extends WebSocketHandler {
 	 * @param session                     The terminated session.
 	 * @param messagesQueueBySubscription The map of subscriptionIds mapped to the queue of unacknowledged outbound messageIds expecting an acknowledgement. May be <code>null</code>
 	 * @param messagesCache               The map of messageIds mapped to the tuples of subscriptionIds and unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
-	 * @see StompHandler#onDisconnect(WebSocketSession, StompMessage, StompMessage, Map, Map)
-	 * @see StompHandler#onError(WebSocketSession, StompMessage, StompMessage, Map, Map)
+	 * @see StompServer#onDisconnect(WebSocketSession, StompMessage, StompMessage, Map, Map)
+	 * @see StompServer#onError(WebSocketSession, StompMessage, StompMessage, Map, Map)
 	 */
 	default Mono<Void> doFinally(WebSocketSession session, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
 		return Mono.empty();
@@ -266,8 +258,8 @@ public interface StompHandler extends WebSocketHandler {
 	 * @param outbound                    The potential outbound server frame. May be <code>null</code>
 	 * @param messagesQueueBySubscription The map of subscriptionIds mapped to the queue of unacknowledged outbound messageIds expecting an acknowledgement. May be <code>null</code>
 	 * @param messagesCache               The map of messageIds mapped to the tuples of subscriptionIds and unacknowledged outbound messages expecting an acknowledgement. May be <code>null</code>
-	 * @see StompHandler#doFinally(WebSocketSession, Map, Map)
-	 * @see StompHandler#onError(WebSocketSession, StompMessage, StompMessage, Map, Map)
+	 * @see StompServer#doFinally(WebSocketSession, Map, Map)
+	 * @see StompServer#onError(WebSocketSession, StompMessage, StompMessage, Map, Map)
 	 */
 	default Mono<StompMessage> onDisconnect(WebSocketSession session, StompMessage inbound, StompMessage outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
 		return Mono.justOrEmpty(outbound);
@@ -283,8 +275,8 @@ public interface StompHandler extends WebSocketHandler {
 	 * @param outbound                    The potential outbound server frame.
 	 * @param messagesQueueBySubscription The map of subscriptionIds mapped to the queue of unacknowledged outbound messageIds expecting an acknowledgement. May be <code>null</code>
 	 * @param messagesCache               The map of messageIds mapped to the tuples of subscriptionIds and unacknowledged outbound messages expecting an acknowledgement. May be <code>null</code>
-	 * @see StompHandler#doFinally(WebSocketSession, Map, Map)
-	 * @see StompHandler#onDisconnect(WebSocketSession, StompMessage, StompMessage, Map, Map)
+	 * @see StompServer#doFinally(WebSocketSession, Map, Map)
+	 * @see StompServer#onDisconnect(WebSocketSession, StompMessage, StompMessage, Map, Map)
 	 */
 	default Mono<StompMessage> onError(WebSocketSession session, StompMessage inbound, StompMessage outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
 		return Mono.just(outbound);
