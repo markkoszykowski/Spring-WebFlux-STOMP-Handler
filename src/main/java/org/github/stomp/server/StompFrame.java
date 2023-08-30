@@ -24,7 +24,7 @@ import java.util.Optional;
 
 @Getter
 @Builder
-public class StompMessage {
+public class StompFrame {
 
 	public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
@@ -44,9 +44,9 @@ public class StompMessage {
 	final Charset bodyCharset;
 	final byte[] body;
 
-	StompMessage(StompCommand command, MultiValueMap<String, String> headers, Charset charset, byte[] body) {
-		Assert.notNull(command, "Command must not be null");
-		Assert.notNull(headers, "Headers must not be null");
+	StompFrame(StompCommand command, MultiValueMap<String, String> headers, Charset charset, byte[] body) {
+		Assert.notNull(command, "'command' must not be null");
+		Assert.notNull(headers, "'headers' must not be null");
 
 		this.command = command;
 		this.headers = headers;
@@ -54,10 +54,10 @@ public class StompMessage {
 		this.body = body;
 	}
 
-	StompMessage(WebSocketMessage socketMessage) {
-		Assert.notNull(socketMessage, "WebSocketMessage must not be null");
+	StompFrame(WebSocketMessage webSocketMessage) {
+		Assert.notNull(webSocketMessage, "'webSocketMessage' must not be null");
 
-		DataBuffer dataBuffer = socketMessage.getPayload();
+		DataBuffer dataBuffer = webSocketMessage.getPayload();
 		ByteBuffer byteBuffer = ByteBuffer.allocate(dataBuffer.readableByteCount());
 		dataBuffer.toByteBuffer(byteBuffer);
 
@@ -66,7 +66,7 @@ public class StompMessage {
 
 		this.command = accessor.getCommand();
 		this.headers = CollectionUtils.toMultiValueMap(accessor.toNativeHeaderMap());
-		this.bodyCharset = HttpUtil.getCharset(this.headers.getFirst(StompHeaderAccessor.STOMP_CONTENT_TYPE_HEADER), DEFAULT_CHARSET);
+		this.bodyCharset = HttpUtil.getCharset(this.headers.getFirst(StompHeaderAccessor.STOMP_CONTENT_TYPE_HEADER), null);
 
 		int contentLength = Optional.ofNullable(this.headers.getFirst(StompHeaderAccessor.STOMP_CONTENT_LENGTH_HEADER))
 				.map(Integer::parseUnsignedInt)
@@ -75,12 +75,16 @@ public class StompMessage {
 		this.body = contentLength == -1 || contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
 	}
 
-	public static StompMessage from(WebSocketMessage socketMessage) {
-		return new StompMessage(socketMessage);
+	public static StompFrame from(WebSocketMessage socketMessage) {
+		return new StompFrame(socketMessage);
 	}
 
 	public MultiValueMap<String, String> getHeaders() {
 		return CollectionUtils.unmodifiableMultiValueMap(this.headers);
+	}
+
+	public byte[] getBody() {
+		return this.body == null ? null : body.clone();
 	}
 
 	public String getCommandString() {
@@ -91,8 +95,8 @@ public class StompMessage {
 		return this.command == StompCommand.ERROR;
 	}
 
-	public StompMessage.StompMessageBuilder mutate() {
-		return StompMessage.builder()
+	public StompFrame.StompFrameBuilder mutate() {
+		return StompFrame.builder()
 				.command(this.command)
 				.headers(this.headers)
 				.bodyCharset(this.bodyCharset)
@@ -111,13 +115,17 @@ public class StompMessage {
 
 	public String toString() {
 		StringBuilder sb = new StringBuilder(this.capacityGuesstimate());
+
 		sb.append(this.command.name()).append(EOL);
+
 		this.headers.forEach((key, valueList) -> valueList.forEach(value -> {
 			sb.append(key).append(HEADER_SEPARATOR);
 			Optional.ofNullable(value).ifPresent(sb::append);
 			sb.append(EOL);
 		}));
+
 		sb.append(EOL);
+
 		Optional.ofNullable(this.body).ifPresent(b -> {
 			if (this.bodyCharset == null) {
 				appendBinaryRepresentation(sb, b);
@@ -125,7 +133,9 @@ public class StompMessage {
 				sb.append(new String(b, this.bodyCharset));
 			}
 		});
+
 		sb.append(NULL_STRING);
+
 		return sb.toString();
 	}
 
@@ -154,7 +164,9 @@ public class StompMessage {
 
 	public ByteBuffer toByteBuffer() {
 		ByteBuffer buffer = ByteBuffer.allocate(this.capacityGuesstimate());
+
 		buffer = putInBuffer(buffer, this.command.name().getBytes(DEFAULT_CHARSET), EOL_BYTES);
+
 		for (Map.Entry<String, List<String>> entry : this.headers.entrySet()) {
 			byte[] key = entry.getKey().getBytes(DEFAULT_CHARSET);
 			for (String value : entry.getValue()) {
@@ -165,10 +177,13 @@ public class StompMessage {
 				buffer = putInBuffer(buffer, EOL_BYTES);
 			}
 		}
+
 		buffer = putInBuffer(buffer, EOL_BYTES);
+
 		if (this.body != null) {
 			buffer = putInBuffer(buffer, this.body);
 		}
+
 		buffer = putInBuffer(buffer, NULL_BYTES);
 
 		int size = buffer.position();

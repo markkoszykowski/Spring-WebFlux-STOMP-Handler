@@ -3,7 +3,6 @@ package org.github.stomp.server;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
 
 import java.util.List;
 import java.util.Map;
@@ -74,7 +73,7 @@ public interface StompServer {
 	 * @param session The session to add frame sources to.
 	 * @return The list of sources to propagate frames.
 	 */
-	default Mono<List<Flux<StompMessage>>> addWebSocketSources(WebSocketSession session) {
+	default Mono<List<Flux<StompFrame>>> addWebSocketSources(WebSocketSession session) {
 		return Mono.empty();
 	}
 
@@ -84,7 +83,7 @@ public interface StompServer {
 	 * @param session The associated websocket session.
 	 * @param inbound The inbound STOMP frame.
 	 */
-	default Mono<Void> doOnEachInbound(WebSocketSession session, StompMessage inbound) {
+	default Mono<Void> doOnEachInbound(WebSocketSession session, StompFrame inbound) {
 		return Mono.empty();
 	}
 
@@ -94,7 +93,7 @@ public interface StompServer {
 	 * @param session  The associated websocket session.
 	 * @param outbound The outbound STOMP frame.
 	 */
-	default Mono<Void> doOnEachOutbound(WebSocketSession session, StompMessage outbound) {
+	default Mono<Void> doOnEachOutbound(WebSocketSession session, StompFrame outbound) {
 		return Mono.empty();
 	}
 
@@ -104,12 +103,12 @@ public interface StompServer {
 	 * by the client.
 	 *
 	 * @param session                     The terminated session.
-	 * @param messagesQueueBySubscription The map of subscriptionIds mapped to the queue of unacknowledged outbound messageIds expecting an acknowledgement. May be <code>null</code>
-	 * @param messagesCache               The map of messageIds mapped to the tuples of subscriptionIds and unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
-	 * @see StompServer#onDisconnect(WebSocketSession, StompMessage, StompMessage, Map, Map)
-	 * @see StompServer#onError(WebSocketSession, StompMessage, StompMessage, Map, Map)
+	 * @param messagesQueueBySubscription The map of <code>subscription</code>s mapped to the queue of unacknowledged outbound <code>ack</code>s expecting an acknowledgement. May be <code>null</code>
+	 * @param messagesCache               The map of <code>ack</code>s mapped to the unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
+	 * @see StompServer#onDisconnect(WebSocketSession, StompFrame, StompFrame, Map, Map)
+	 * @see StompServer#onError(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<Void> doFinally(WebSocketSession session, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
+	default Mono<Void> doFinally(WebSocketSession session, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, StompFrame> messagesCache) {
 		return Mono.empty();
 	}
 
@@ -123,7 +122,7 @@ public interface StompServer {
 	 * @param host     The host requested in the client frame. May be <code>null</code>
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompMessage> onStomp(WebSocketSession session, StompMessage inbound, StompMessage outbound, Version version, String host) {
+	default Mono<StompFrame> onStomp(WebSocketSession session, StompFrame inbound, StompFrame outbound, Version version, String host) {
 		return Mono.just(outbound);
 	}
 
@@ -137,7 +136,7 @@ public interface StompServer {
 	 * @param host     The host requested in the client frame. May be <code>null</code>
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompMessage> onConnect(WebSocketSession session, StompMessage inbound, StompMessage outbound, Version version, String host) {
+	default Mono<StompFrame> onConnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Version version, String host) {
 		return Mono.just(outbound);
 	}
 
@@ -150,7 +149,7 @@ public interface StompServer {
 	 * @param destination The destination of the <code>SEND</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompMessage> onSend(WebSocketSession session, StompMessage inbound, StompMessage outbound, String destination) {
+	default Mono<StompFrame> onSend(WebSocketSession session, StompFrame inbound, StompFrame outbound, String destination) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -164,7 +163,7 @@ public interface StompServer {
 	 * @param subscriptionId The subscriptionId of the <code>SUBSCRIBE</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompMessage> onSubscribe(WebSocketSession session, StompMessage inbound, StompMessage outbound, String destination, String subscriptionId) {
+	default Mono<StompFrame> onSubscribe(WebSocketSession session, StompFrame inbound, StompFrame outbound, String destination, String subscriptionId) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -177,21 +176,22 @@ public interface StompServer {
 	 * @param subscriptionId The subscriptionId of the <code>UNSUBSCRIBE</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompMessage> onUnsubscribe(WebSocketSession session, StompMessage inbound, StompMessage outbound, String subscriptionId) {
+	default Mono<StompFrame> onUnsubscribe(WebSocketSession session, StompFrame inbound, StompFrame outbound, String subscriptionId) {
 		return Mono.justOrEmpty(outbound);
 	}
 
 	/**
 	 * Adds behaviour upon receiving <code>ACK</code> frame from client.
 	 *
-	 * @param session     The associated websocket session.
-	 * @param inbound     The inbound client frame.
-	 * @param outbound    The potential outbound server frame. May be <code>null</code>
-	 * @param message     The messageId of the <code>ACK</code> frame.
-	 * @param ackMessages The list of tuples of subscriptionIds and ack-ed frames.
+	 * @param session      The associated websocket session.
+	 * @param inbound      The inbound client frame.
+	 * @param outbound     The potential outbound server frame. May be <code>null</code>
+	 * @param subscription The subscription of the <code>ACK</code> frame.
+	 * @param id           The id of the <code>ACK</code> frame.
+	 * @param ackMessages  The list of ack-ed messages.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompMessage> onAck(WebSocketSession session, StompMessage inbound, StompMessage outbound, String message, List<Tuple2<String, StompMessage>> ackMessages) {
+	default Mono<StompFrame> onAck(WebSocketSession session, StompFrame inbound, StompFrame outbound, String subscription, String id, List<StompFrame> ackMessages) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -201,11 +201,12 @@ public interface StompServer {
 	 * @param session      The associated websocket session.
 	 * @param inbound      The inbound client frame.
 	 * @param outbound     The potential outbound server frame. May be <code>null</code>
-	 * @param message      The messageId of the <code>NACK</code> frame.
-	 * @param nackMessages The list of tuples of subscriptionIds and nack-ed frames.
+	 * @param subscription The subscription of the <code>ACK</code> frame.
+	 * @param id           Thes id of the <code>NACK</code> frame.
+	 * @param nackMessages The list of nack-ed messages.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompMessage> onNack(WebSocketSession session, StompMessage inbound, StompMessage outbound, String message, List<Tuple2<String, StompMessage>> nackMessages) {
+	default Mono<StompFrame> onNack(WebSocketSession session, StompFrame inbound, StompFrame outbound, String subscription, String id, List<StompFrame> nackMessages) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -218,7 +219,7 @@ public interface StompServer {
 	 * @param transaction The transaction of the <code>BEGIN</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompMessage> onBegin(WebSocketSession session, StompMessage inbound, StompMessage outbound, String transaction) {
+	default Mono<StompFrame> onBegin(WebSocketSession session, StompFrame inbound, StompFrame outbound, String transaction) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -231,7 +232,7 @@ public interface StompServer {
 	 * @param transaction The transaction of the <code>COMMIT</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompMessage> onCommit(WebSocketSession session, StompMessage inbound, StompMessage outbound, String transaction) {
+	default Mono<StompFrame> onCommit(WebSocketSession session, StompFrame inbound, StompFrame outbound, String transaction) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -244,7 +245,7 @@ public interface StompServer {
 	 * @param transaction The transaction of the <code>ABORT</code> frame.
 	 * @return The final outbound STOMP message.
 	 */
-	default Mono<StompMessage> onAbort(WebSocketSession session, StompMessage inbound, StompMessage outbound, String transaction) {
+	default Mono<StompFrame> onAbort(WebSocketSession session, StompFrame inbound, StompFrame outbound, String transaction) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -256,12 +257,12 @@ public interface StompServer {
 	 * @param session                     The associated websocket session.
 	 * @param inbound                     The inbound client frame.
 	 * @param outbound                    The potential outbound server frame. May be <code>null</code>
-	 * @param messagesQueueBySubscription The map of subscriptionIds mapped to the queue of unacknowledged outbound messageIds expecting an acknowledgement. May be <code>null</code>
-	 * @param messagesCache               The map of messageIds mapped to the tuples of subscriptionIds and unacknowledged outbound messages expecting an acknowledgement. May be <code>null</code>
+	 * @param messagesQueueBySubscription The map of <code>subscription</code>s mapped to the queue of unacknowledged outbound <code>ack</code>s expecting an acknowledgement. May be <code>null</code>
+	 * @param messagesCache               The map of <code>ack</code>s mapped to the unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
 	 * @see StompServer#doFinally(WebSocketSession, Map, Map)
-	 * @see StompServer#onError(WebSocketSession, StompMessage, StompMessage, Map, Map)
+	 * @see StompServer#onError(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<StompMessage> onDisconnect(WebSocketSession session, StompMessage inbound, StompMessage outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
+	default Mono<StompFrame> onDisconnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, StompFrame> messagesCache) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -273,12 +274,12 @@ public interface StompServer {
 	 * @param session                     The associated websocket session.
 	 * @param inbound                     The inbound client frame.
 	 * @param outbound                    The potential outbound server frame.
-	 * @param messagesQueueBySubscription The map of subscriptionIds mapped to the queue of unacknowledged outbound messageIds expecting an acknowledgement. May be <code>null</code>
-	 * @param messagesCache               The map of messageIds mapped to the tuples of subscriptionIds and unacknowledged outbound messages expecting an acknowledgement. May be <code>null</code>
+	 * @param messagesQueueBySubscription The map of <code>subscription</code>s mapped to the queue of unacknowledged outbound <code>ack</code>s expecting an acknowledgement. May be <code>null</code>
+	 * @param messagesCache               The map of <code>ack</code>s mapped to the unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
 	 * @see StompServer#doFinally(WebSocketSession, Map, Map)
-	 * @see StompServer#onDisconnect(WebSocketSession, StompMessage, StompMessage, Map, Map)
+	 * @see StompServer#onDisconnect(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<StompMessage> onError(WebSocketSession session, StompMessage inbound, StompMessage outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
+	default Mono<StompFrame> onError(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, StompFrame> messagesCache) {
 		return Mono.just(outbound);
 	}
 

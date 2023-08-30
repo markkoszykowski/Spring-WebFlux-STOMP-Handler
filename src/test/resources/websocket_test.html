@@ -24,7 +24,10 @@
 	const rxStomp = new RxStomp();
 
 	rxStomp.configure({
-		webSocketFactory: () => new WebSocket('ws://localhost:8080/simple')
+		webSocketFactory: () => new WebSocket('ws://localhost:8080/simple'),
+		connectHeaders: {
+			"host": "localhost"
+		}
 	});
 
 	rxStomp.activate();
