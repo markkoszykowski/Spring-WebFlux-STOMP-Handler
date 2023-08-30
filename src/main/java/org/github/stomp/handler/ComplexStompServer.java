@@ -28,11 +28,11 @@ public class ComplexStompServer implements StompServer {
 
 	public static final String SIMPLE_WEBSOCKET_PATH = "/complex";
 
-	private static final int REALLY_LARGE_NUMBER = 7;
+	private static final int REALLY_LARGE_NUMBER = 14;
 	private static final long DELAY_MILLIS = 300;
 
-	public static StompMessage generateMessage(WebSocketSession session, String destination, String subscriptionId, int i) {
-		return StompUtils.makeMessage(session.getId(), destination, subscriptionId, i > 0 ? String.valueOf(i) : "Watch me count (complexly)!");
+	public static StompMessage generateMessage(String destination, String subscriptionId, int i) {
+		return StompUtils.makeMessage(destination, subscriptionId, i > 0 ? String.valueOf(i) : "Watch me count (complexly)!");
 	}
 
 	private final ConcurrentHashMap<String, Sinks.Many<StompMessage>> sessionCounters = new ConcurrentHashMap<>();
@@ -45,7 +45,7 @@ public class ComplexStompServer implements StompServer {
 	@Override
 	public Mono<List<Flux<StompMessage>>> addWebSocketSources(WebSocketSession session) {
 		return Mono.just(Collections.singletonList(
-				sessionCounters.compute(session.getId(), (k, v) -> Sinks.many().unicast().onBackpressureBuffer())
+				this.sessionCounters.compute(session.getId(), (k, v) -> Sinks.many().unicast().onBackpressureBuffer())
 						.asFlux().delayElements(Duration.ofMillis(DELAY_MILLIS))
 		));
 	}
@@ -64,7 +64,7 @@ public class ComplexStompServer implements StompServer {
 
 	@Override
 	public Mono<Void> doFinally(WebSocketSession session, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, Tuple2<String, StompMessage>> messagesCache) {
-		sessionCounters.remove(session.getId());
+		this.sessionCounters.remove(session.getId());
 		log.info("Closing session {}", session.getId());
 		return StompServer.super.doFinally(session, messagesQueueBySubscription, messagesCache);
 	}
@@ -83,9 +83,9 @@ public class ComplexStompServer implements StompServer {
 
 	@Override
 	public Mono<StompMessage> onSubscribe(WebSocketSession session, StompMessage inbound, StompMessage outbound, String destination, String subscriptionId) {
-		Sinks.Many<StompMessage> userSink = sessionCounters.get(session.getId());
+		Sinks.Many<StompMessage> userSink = this.sessionCounters.get(session.getId());
 		for (int i = 0; i < REALLY_LARGE_NUMBER + 1; i++) {
-			userSink.tryEmitNext(generateMessage(session, destination, subscriptionId, i)).orThrow();
+			userSink.tryEmitNext(generateMessage(destination, subscriptionId, i)).orThrow();
 		}
 		if (outbound != null) {
 			return Mono.just(outbound);
@@ -94,7 +94,7 @@ public class ComplexStompServer implements StompServer {
 		Charset charset = StandardCharsets.UTF_16LE;
 		String body = "You didn't want a receipt... But you get this instead:\nCongrats! You have subscribed!";
 		byte[] bodyBytes = body.getBytes(charset);
-		return Mono.just(StompUtils.makeMessage(session.getId(), destination, subscriptionId, Map.of(
+		return Mono.just(StompUtils.makeMessage(destination, subscriptionId, Map.of(
 				"congrats", Collections.singletonList("you're subscribed!")
 		), new MimeType(MediaType.TEXT_PLAIN, charset), bodyBytes));
 	}

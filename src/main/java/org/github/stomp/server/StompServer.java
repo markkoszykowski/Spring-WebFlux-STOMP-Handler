@@ -23,7 +23,7 @@ public interface StompServer {
 		v1_1("1.1"),
 		v1_2("1.2");
 
-		final Float floatVersion;
+		final float floatVersion;
 		final String version;
 
 		Version(String version) {
@@ -31,7 +31,7 @@ public interface StompServer {
 			this.floatVersion = Float.parseFloat(version);
 		}
 
-		public Float version() {
+		public float version() {
 			return floatVersion;
 		}
 
