@@ -133,7 +133,7 @@ public interface StompServer {
 	 * @param inbound  The inbound client frame.
 	 * @param outbound The potential outbound server frame.
 	 * @param version  The negotiated STOMP protocol version.
-	 * @param host     The host requested in the client frame. May be <code>null</code>
+	 * @param host     The host requested in the client frame.
 	 * @return The final outbound STOMP frame.
 	 */
 	default Mono<StompFrame> onConnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Version version, String host) {

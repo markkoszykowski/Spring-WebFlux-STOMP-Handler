@@ -92,10 +92,9 @@ public class SimpleStompServer implements StompServer {
 		// Testing non-default charset encodings
 		Charset charset = StandardCharsets.UTF_16LE;
 		String body = "You didn't want a receipt... But you get this instead:\nCongrats! You have subscribed!";
-		byte[] bodyBytes = body.getBytes(charset);
 		return Mono.just(StompUtils.makeMessage(destination, subscriptionId, Map.of(
 				"congrats", Collections.singletonList("you're subscribed!")
-		), new MimeType(MediaType.TEXT_PLAIN, charset), bodyBytes));
+		), new MimeType(MediaType.TEXT_PLAIN, charset), body.getBytes(charset)));
 	}
 
 	@Override

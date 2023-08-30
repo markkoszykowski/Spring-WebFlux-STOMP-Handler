@@ -8,6 +8,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompDecoder;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.NativeMessageHeaderAccessor;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.MultiValueMap;
@@ -17,10 +18,7 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Getter
 @Builder
@@ -65,7 +63,7 @@ public class StompFrame {
 		StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
 		this.command = accessor.getCommand();
-		this.headers = CollectionUtils.toMultiValueMap(accessor.toNativeHeaderMap());
+		this.headers = getHeaders(accessor);
 		this.bodyCharset = HttpUtil.getCharset(this.headers.getFirst(StompHeaderAccessor.STOMP_CONTENT_TYPE_HEADER), null);
 
 		int contentLength = Optional.ofNullable(this.headers.getFirst(StompHeaderAccessor.STOMP_CONTENT_LENGTH_HEADER))
@@ -101,6 +99,12 @@ public class StompFrame {
 				.headers(this.headers)
 				.bodyCharset(this.bodyCharset)
 				.body(this.body);
+	}
+
+	@SuppressWarnings("unchecked")
+	static MultiValueMap<String, String> getHeaders(StompHeaderAccessor accessor) {
+		Map<String, List<String>> headers = (Map<String, List<String>>) accessor.getHeader(NativeMessageHeaderAccessor.NATIVE_HEADERS);
+		return CollectionUtils.toMultiValueMap(headers == null ? Collections.emptyMap() : headers);
 	}
 
 	static void appendBinaryRepresentation(StringBuilder sb, byte[] bytes) {
