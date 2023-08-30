@@ -36,6 +36,13 @@ final class StompHandler implements WebSocketHandler {
 
 	static final List<Version> SUPPORTED_VERSIONS = List.of(Version.v1_2, Version.v1_1, Version.v1_0);
 
+	static String versionsToString(String delimiter) {
+		return SUPPORTED_VERSIONS.stream()
+				.sorted(Comparator.comparing(Version::version))
+				.map(Version::toString)
+				.collect(Collectors.joining(delimiter));
+	}
+
 	@NonNull
 	@Override
 	public List<String> getSubProtocols() {
@@ -106,11 +113,9 @@ final class StompHandler implements WebSocketHandler {
 		}
 
 		if (usingVersion == null) {
-			String serverVersionsHeader = SUPPORTED_VERSIONS.stream().sorted(Comparator.comparing(Version::version)).map(Version::toString).collect(Collectors.joining(","));
-			String serverVersionsBody = SUPPORTED_VERSIONS.stream().sorted(Comparator.comparing(Version::version)).map(Version::toString).collect(Collectors.joining(" "));
 			return Mono.just(StompUtils.makeError(inbound, CollectionUtils.toMultiValueMap(Map.of(
-					StompUtils.VERSION, Collections.singletonList(serverVersionsHeader)
-			)), "unsupported protocol versions", String.format("Supported protocol versions are %s", serverVersionsBody)));
+					StompUtils.VERSION, Collections.singletonList(versionsToString(","))
+			)), "unsupported protocol versions", String.format("Supported protocol versions are %s", versionsToString(" "))));
 		}
 
 		String host = inbound.headers.getFirst(StompHeaders.HOST);
