@@ -18,13 +18,13 @@ class StompConfig {
 	final List<StompHandler> handlers;
 
 	StompConfig(List<? extends StompServer> servers) {
-		handlers = servers.stream().map(StompHandler::new).toList();
+		this.handlers = servers.stream().map(StompHandler::new).toList();
 	}
 
 	@Bean
 	HandlerMapping handlerMapping() {
-		Map<String, StompHandler> handlerMap = handlers.stream().collect(Collectors.toMap(handler -> handler.server.path(), Function.identity()));
-		Assert.isTrue(handlerMap.size() == handlers.size(), "Paths of StompServers should be unique");
+		Map<String, StompHandler> handlerMap = this.handlers.stream().collect(Collectors.toMap(handler -> handler.server.path(), Function.identity()));
+		Assert.isTrue(handlerMap.size() == this.handlers.size(), "Paths of StompServers should be unique");
 		return new SimpleUrlHandlerMapping(handlerMap, Ordered.HIGHEST_PRECEDENCE);
 	}
 

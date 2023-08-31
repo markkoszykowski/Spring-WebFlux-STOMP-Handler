@@ -102,11 +102,11 @@ final class StompHandler implements WebSocketHandler {
 	Mono<StompFrame> handleProtocolNegotiation(WebSocketSession session, StompFrame inbound, QuintFunction<WebSocketSession, StompFrame, StompFrame, Version, String, Mono<StompFrame>> onFunction) {
 		String versionsString = inbound.headers.getFirst(StompHeaders.ACCEPT_VERSION);
 		Version usingVersion;
-		if (versionsString == null) {
-			usingVersion = Version.v1_0;
-		} else {
+		if (versionsString != null) {
 			Set<String> versionsSet = Set.of(versionsString.split(","));
 			usingVersion = SUPPORTED_VERSIONS.stream().filter(version -> versionsSet.contains(version.toString())).findFirst().orElse(null);
+		} else {
+			usingVersion = Version.v1_0;
 		}
 
 		if (usingVersion == null) {
@@ -306,10 +306,15 @@ final class StompHandler implements WebSocketHandler {
 			return;
 		}
 
-		String ack = UUID.randomUUID().toString();
 		String subscription = outbound.headers.getFirst(StompHeaders.SUBSCRIPTION);
 		Assert.notNull(subscription, "Trying to send MESSAGE without subscription");
 
+		AckMode ackMode = subscriptionAckMode.get(subscription);
+		if (ackMode == null || ackMode == AckMode.AUTO) {
+			return;
+		}
+
+		String ack = UUID.randomUUID().toString();
 		this.ackMessageCache.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>())
 				.put(ack, outbound);
 		this.ackSubscriptionCache.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>())

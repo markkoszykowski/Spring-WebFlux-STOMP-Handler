@@ -55,7 +55,7 @@ public interface StompServer {
 				return null;
 			}
 			for (AckMode mode : AckMode.values()) {
-				if (mode.toString().equalsIgnoreCase(ackMode)) {
+				if (mode.ackMode.equalsIgnoreCase(ackMode)) {
 					return mode;
 				}
 			}

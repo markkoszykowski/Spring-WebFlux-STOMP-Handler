@@ -82,7 +82,7 @@ public class StompFrame {
 	}
 
 	public byte[] getBody() {
-		return this.body == null ? null : body.clone();
+		return this.body != null ? body.clone() : null;
 	}
 
 	public String getCommandString() {
@@ -104,7 +104,7 @@ public class StompFrame {
 	@SuppressWarnings("unchecked")
 	static MultiValueMap<String, String> getHeaders(StompHeaderAccessor accessor) {
 		Map<String, List<String>> headers = (Map<String, List<String>>) accessor.getHeader(NativeMessageHeaderAccessor.NATIVE_HEADERS);
-		return CollectionUtils.toMultiValueMap(headers == null ? Collections.emptyMap() : headers);
+		return CollectionUtils.toMultiValueMap(headers != null ? headers : Collections.emptyMap());
 	}
 
 	static void appendBinaryRepresentation(StringBuilder sb, byte[] bytes) {
@@ -114,7 +114,7 @@ public class StompFrame {
 	}
 
 	int capacityGuesstimate() {
-		return this.command.name().length() + (64 * this.headers.size()) + (this.body == null ? 0 : this.body.length) + 4;
+		return this.command.name().length() + (64 * this.headers.size()) + (this.body != null ? this.body.length : 0) + 4;
 	}
 
 	public String toString() {
@@ -131,10 +131,10 @@ public class StompFrame {
 		sb.append(EOL);
 
 		Optional.ofNullable(this.body).ifPresent(b -> {
-			if (this.bodyCharset == null) {
-				appendBinaryRepresentation(sb, b);
-			} else {
+			if (this.bodyCharset != null) {
 				sb.append(new String(b, this.bodyCharset));
+			} else {
+				appendBinaryRepresentation(sb, b);
 			}
 		});
 
