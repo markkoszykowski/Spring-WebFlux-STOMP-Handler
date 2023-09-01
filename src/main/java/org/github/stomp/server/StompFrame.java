@@ -18,7 +18,10 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class StompFrame {
 
@@ -73,11 +76,14 @@ public class StompFrame {
 		this.headers = getHeaders(accessor);
 		this.bodyCharset = HttpUtil.getCharset(this.headers.getFirst(StompHeaderAccessor.STOMP_CONTENT_TYPE_HEADER), null);
 
-		int contentLength = Optional.ofNullable(this.headers.getFirst(StompHeaderAccessor.STOMP_CONTENT_LENGTH_HEADER))
-				.map(Integer::parseUnsignedInt)
-				.orElse(-1);
 		byte[] temp = message.getPayload();
-		this.body = contentLength == -1 || contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
+		String contentLengthHeader = this.headers.getFirst(StompHeaderAccessor.STOMP_CONTENT_LENGTH_HEADER);
+		if (contentLengthHeader != null) {
+			int contentLength = Integer.parseUnsignedInt(contentLengthHeader);
+			this.body = contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
+		} else {
+			this.body = temp;
+		}
 
 		this.asString = null;
 		this.asByteBuffer = null;
@@ -113,12 +119,6 @@ public class StompFrame {
 		return CollectionUtils.toMultiValueMap(headers != null ? headers : Collections.emptyMap());
 	}
 
-	static void appendBinaryRepresentation(StringBuilder sb, byte[] bytes) {
-		for (byte b : bytes) {
-			sb.append(Integer.toBinaryString(b & 255 | 256).substring(1));
-		}
-	}
-
 	int capacityGuesstimate() {
 		return this.command.name().length() + (64 * this.headers.size()) + (this.body != null ? this.body.length : 0) + 4;
 	}
@@ -134,19 +134,23 @@ public class StompFrame {
 
 		this.headers.forEach((key, valueList) -> valueList.forEach(value -> {
 			sb.append(key).append(HEADER_SEPARATOR);
-			Optional.ofNullable(value).ifPresent(sb::append);
+			if (value != null) {
+				sb.append(value);
+			}
 			sb.append(EOL);
 		}));
 
 		sb.append(EOL);
 
-		Optional.ofNullable(this.body).ifPresent(b -> {
+		if (this.body != null) {
 			if (this.bodyCharset != null) {
-				sb.append(new String(b, this.bodyCharset));
+				sb.append(new String(this.body, this.bodyCharset));
 			} else {
-				appendBinaryRepresentation(sb, b);
+				for (byte b : this.body) {
+					sb.append(Integer.toBinaryString(b & 255 | 256).substring(1));
+				}
 			}
-		});
+		}
 
 		sb.append(NULL_STRING);
 

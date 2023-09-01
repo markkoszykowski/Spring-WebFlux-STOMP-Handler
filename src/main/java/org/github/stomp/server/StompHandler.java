@@ -181,16 +181,17 @@ final class StompHandler implements WebSocketHandler {
 			return Mono.just(StompUtils.makeMalformedError(inbound, StompHeaders.ID));
 		}
 
-		ConcurrentLinkedQueue<String> frameQueueCache = Optional.ofNullable(this.ackSubscriptionCache.get(sessionId))
-				.map(map -> map.remove(subscriptionId))
-				.map(Tuple2::getT2)
-				.orElse(null);
-		if (frameQueueCache != null) {
-			ConcurrentHashMap<String, StompFrame> frameCache = this.ackFrameCache.get(sessionId);
-			if (frameCache != null) {
-				frameQueueCache.forEach(frameCache::remove);
+		ConcurrentHashMap<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache = this.ackSubscriptionCache.get(sessionId);
+		if (subscriptionCache != null) {
+			Tuple2<AckMode, ConcurrentLinkedQueue<String>> subscriptionInfo = subscriptionCache.get(subscriptionId);
+			if (subscriptionInfo != null) {
+				ConcurrentHashMap<String, StompFrame> frameCache = this.ackFrameCache.get(sessionId);
+				if (frameCache != null) {
+					subscriptionInfo.getT2().forEach(frameCache::remove);
+				}
 			}
 		}
+
 		return this.server.onUnsubscribe(session, inbound, StompUtils.makeReceipt(inbound), subscriptionId);
 	}
 
@@ -214,9 +215,12 @@ final class StompHandler implements WebSocketHandler {
 		String subscription = frame.headers.getFirst(StompHeaders.SUBSCRIPTION);
 		Assert.notNull(subscription, "Sent MESSAGE without subscription");
 
-		Tuple2<AckMode, ConcurrentLinkedQueue<String>> subscriptionInfo = Optional.ofNullable(this.ackSubscriptionCache.get(sessionId))
-				.map(cache -> cache.get(subscription))
-				.orElse(null);
+		ConcurrentHashMap<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache = this.ackSubscriptionCache.get(sessionId);
+		if (subscriptionCache == null) {
+			return Mono.just(StompUtils.makeError(inbound, "session info not found in cache"));
+		}
+
+		Tuple2<AckMode, ConcurrentLinkedQueue<String>> subscriptionInfo = subscriptionCache.get(subscription);
 		if (subscriptionInfo == null) {
 			return Mono.just(StompUtils.makeError(inbound, "subscription info not found in cache"));
 		}
@@ -229,13 +233,19 @@ final class StompHandler implements WebSocketHandler {
 					do {
 						a = subscriptionInfo.getT2().poll();
 						if (a == null) break;
-						Optional.ofNullable(frameCache.remove(a)).ifPresent(ackOrNackMessages::add);
+						StompFrame removed = frameCache.remove(ackId);
+						if (removed != null) {
+							ackOrNackMessages.add(removed);
+						}
 					} while (!a.equals(ackId));
 				}
 			}
 		} else if (subscriptionInfo.getT1() == AckMode.CLIENT_INDIVIDUAL) {
 			subscriptionInfo.getT2().remove(ackId);
-			Optional.ofNullable(frameCache.remove(ackId)).ifPresent(ackOrNackMessages::add);
+			StompFrame removed = frameCache.remove(ackId);
+			if (removed != null) {
+				ackOrNackMessages.add(removed);
+			}
 		}
 
 		return onFunction.apply(session, inbound, StompUtils.makeReceipt(inbound), subscription, ackId, ackOrNackMessages);
@@ -291,9 +301,12 @@ final class StompHandler implements WebSocketHandler {
 		String subscription = outbound.headers.getFirst(StompHeaders.SUBSCRIPTION);
 		Assert.notNull(subscription, "Trying to send MESSAGE without subscription");
 
-		Tuple2<AckMode, ConcurrentLinkedQueue<String>> subscriptionInfo = Optional.ofNullable(this.ackSubscriptionCache.get(sessionId))
-				.map(cache -> cache.get(subscription))
-				.orElse(null);
+		ConcurrentHashMap<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache = this.ackSubscriptionCache.get(sessionId);
+		if (subscriptionCache == null) {
+			return;
+		}
+
+		Tuple2<AckMode, ConcurrentLinkedQueue<String>> subscriptionInfo = subscriptionCache.get(subscription);
 		if (subscriptionInfo == null || subscriptionInfo.getT1() == AckMode.AUTO) {
 			return;
 		}

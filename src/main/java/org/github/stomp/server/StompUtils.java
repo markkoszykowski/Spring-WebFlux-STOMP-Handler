@@ -98,7 +98,9 @@ public class StompUtils {
 			headers.add(StompHeaders.CONTENT_TYPE, contentTypeString);
 		}
 
-		Optional.ofNullable(userDefinedHeaders).ifPresent(headers::addAll);
+		if (userDefinedHeaders != null) {
+			headers.addAll(userDefinedHeaders);
+		}
 
 		return new StompFrame(StompCommand.MESSAGE, headers, contentType != null ? contentType.getCharset() : null, body);
 	}
@@ -190,7 +192,9 @@ public class StompUtils {
 			headers.add(StompHeaders.RECEIPT_ID, receipt);
 		}
 
-		Optional.ofNullable(userDefinedHeaders).ifPresent(headers::addAll);
+		if (userDefinedHeaders != null) {
+			headers.addAll(userDefinedHeaders);
+		}
 
 		return new StompFrame(StompCommand.ERROR, headers, contentType != null ? contentType.getCharset() : null, body);
 	}
