@@ -3,6 +3,7 @@ package org.github.stomp.server;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 import java.util.List;
 import java.util.Map;
@@ -18,9 +19,7 @@ public interface StompServer {
 	String path();
 
 	enum Version {
-		v1_0("1.0"),
-		v1_1("1.1"),
-		v1_2("1.2");
+		v1_0("1.0"), v1_1("1.1"), v1_2("1.2");
 
 		final float floatVersion;
 		final String version;
@@ -31,18 +30,16 @@ public interface StompServer {
 		}
 
 		public float version() {
-			return floatVersion;
+			return this.floatVersion;
 		}
 
 		public String toString() {
-			return version;
+			return this.version;
 		}
 	}
 
 	enum AckMode {
-		AUTO("auto"),
-		CLIENT("client"),
-		CLIENT_INDIVIDUAL("client-individual");
+		AUTO("auto"), CLIENT("client"), CLIENT_INDIVIDUAL("client-individual");
 
 		final String ackMode;
 
@@ -63,7 +60,7 @@ public interface StompServer {
 		}
 
 		public String toString() {
-			return ackMode;
+			return this.ackMode;
 		}
 	}
 
@@ -98,17 +95,16 @@ public interface StompServer {
 	}
 
 	/**
-	 * Adds final behavior after websocket closure. The <code>messagesQueueBySubscription</code> and
-	 * <code>messagesCache</code> will only contain valid information upon premature termination of websocket connection
-	 * by the client.
+	 * Adds final behavior after websocket closure. The <code>subscriptionCache</code> and <code>frameCache</code> will
+	 * only contain valid information upon premature termination of websocket connection by the client.
 	 *
-	 * @param session                     The terminated session.
-	 * @param messagesQueueBySubscription The map of <code>subscription</code>s mapped to the queue of unacknowledged outbound <code>ack</code>s expecting an acknowledgement. May be <code>null</code>
-	 * @param messagesCache               The map of <code>ack</code>s mapped to the unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
+	 * @param session           The terminated session.
+	 * @param subscriptionCache The map of <code>subscription</code>s mapped to its acknowledgment mode and the queue of unacknowledged outbound <code>ack</code>s expecting an acknowledgment. May be <code>null</code>
+	 * @param frameCache        The map of <code>ack</code>s mapped to the unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
 	 * @see StompServer#onDisconnect(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 * @see StompServer#onError(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<Void> doFinally(WebSocketSession session, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, StompFrame> messagesCache) {
+	default Mono<Void> doFinally(WebSocketSession session, Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, Map<String, StompFrame> frameCache) {
 		return Mono.empty();
 	}
 
@@ -243,7 +239,7 @@ public interface StompServer {
 	 * @param inbound     The inbound client frame.
 	 * @param outbound    The potential outbound server frame. May be <code>null</code>
 	 * @param transaction The transaction of the <code>ABORT</code> frame.
-	 * @return The final outbound STOMP message.
+	 * @return The final outbound STOMP frame.
 	 */
 	default Mono<StompFrame> onAbort(WebSocketSession session, StompFrame inbound, StompFrame outbound, String transaction) {
 		return Mono.justOrEmpty(outbound);
@@ -251,36 +247,36 @@ public interface StompServer {
 
 	/**
 	 * Adds behaviour upon receiving <code>DISCONNECT</code> frame from client prior to connection closure. The
-	 * <code>messagesQueueBySubscription</code> and <code>messagesCache</code> will always contain valid information if
+	 * <code>subscriptionCache</code> and <code>frameCache</code> will always contain valid information if
 	 * unacknowledged frames exist.
 	 *
-	 * @param session                     The associated websocket session.
-	 * @param inbound                     The inbound client frame.
-	 * @param outbound                    The potential outbound server frame. May be <code>null</code>
-	 * @param messagesQueueBySubscription The map of <code>subscription</code>s mapped to the queue of unacknowledged outbound <code>ack</code>s expecting an acknowledgement. May be <code>null</code>
-	 * @param messagesCache               The map of <code>ack</code>s mapped to the unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
+	 * @param session           The associated websocket session.
+	 * @param inbound           The inbound client frame.
+	 * @param outbound          The potential outbound server frame. May be <code>null</code>
+	 * @param subscriptionCache The map of <code>subscription</code>s mapped to its acknowledgment mode and the queue of unacknowledged outbound <code>ack</code>s expecting an acknowledgment. May be <code>null</code>
+	 * @param frameCache        The map of <code>ack</code>s mapped to the unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
 	 * @see StompServer#doFinally(WebSocketSession, Map, Map)
 	 * @see StompServer#onError(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<StompFrame> onDisconnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, StompFrame> messagesCache) {
+	default Mono<StompFrame> onDisconnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, Map<String, StompFrame> frameCache) {
 		return Mono.justOrEmpty(outbound);
 	}
 
 	/**
 	 * Adds behaviour upon sending <code>ERROR</code> frame to client prior to connection closure. The
-	 * <code>messagesQueueBySubscription</code> and <code>messagesCache</code> will always contain valid information if
+	 * <code>subscriptionCache</code> and <code>frameCache</code> will always contain valid information if
 	 * unacknowledged frames exist.
 	 *
-	 * @param session                     The associated websocket session.
-	 * @param inbound                     The inbound client frame.
-	 * @param outbound                    The potential outbound server frame.
-	 * @param messagesQueueBySubscription The map of <code>subscription</code>s mapped to the queue of unacknowledged outbound <code>ack</code>s expecting an acknowledgement. May be <code>null</code>
-	 * @param messagesCache               The map of <code>ack</code>s mapped to the unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
+	 * @param session           The associated websocket session.
+	 * @param inbound           The inbound client frame.
+	 * @param outbound          The potential outbound server frame.
+	 * @param subscriptionCache The map of <code>subscription</code>s mapped to its acknowledgment mode and the queue of unacknowledged outbound <code>ack</code>s expecting an acknowledgment. May be <code>null</code>
+	 * @param frameCache        The map of <code>ack</code>s mapped to the unacknowledged outbound frames expecting an acknowledgement. May be <code>null</code>
 	 * @see StompServer#doFinally(WebSocketSession, Map, Map)
 	 * @see StompServer#onDisconnect(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<StompFrame> onError(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, StompFrame> messagesCache) {
-		return Mono.just(outbound);
+	default Mono<Void> onError(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, Map<String, StompFrame> frameCache) {
+		return Mono.empty();
 	}
 
 }

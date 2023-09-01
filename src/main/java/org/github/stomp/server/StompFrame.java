@@ -20,8 +20,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-@Getter
-@Builder
 public class StompFrame {
 
 	public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
@@ -37,19 +35,28 @@ public class StompFrame {
 
 	static final StompDecoder decoder = new StompDecoder();
 
+	@Getter
 	final StompCommand command;
 	final MultiValueMap<String, String> headers;
+	@Getter
 	final Charset bodyCharset;
 	final byte[] body;
 
-	StompFrame(StompCommand command, MultiValueMap<String, String> headers, Charset charset, byte[] body) {
+	String asString;
+	ByteBuffer asByteBuffer;
+
+	@Builder
+	StompFrame(StompCommand command, MultiValueMap<String, String> headers, Charset bodyCharset, byte[] body) {
 		Assert.notNull(command, "'command' must not be null");
 		Assert.notNull(headers, "'headers' must not be null");
 
 		this.command = command;
 		this.headers = headers;
-		this.bodyCharset = charset;
+		this.bodyCharset = bodyCharset;
 		this.body = body;
+
+		this.asString = null;
+		this.asByteBuffer = null;
 	}
 
 	StompFrame(WebSocketMessage webSocketMessage) {
@@ -71,6 +78,9 @@ public class StompFrame {
 				.orElse(-1);
 		byte[] temp = message.getPayload();
 		this.body = contentLength == -1 || contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
+
+		this.asString = null;
+		this.asByteBuffer = null;
 	}
 
 	public static StompFrame from(WebSocketMessage socketMessage) {
@@ -87,10 +97,6 @@ public class StompFrame {
 
 	public String getCommandString() {
 		return this.command.name();
-	}
-
-	public boolean error() {
-		return this.command == StompCommand.ERROR;
 	}
 
 	public StompFrame.StompFrameBuilder mutate() {
@@ -118,6 +124,10 @@ public class StompFrame {
 	}
 
 	public String toString() {
+		if (this.asString != null) {
+			return this.asString;
+		}
+
 		StringBuilder sb = new StringBuilder(this.capacityGuesstimate());
 
 		sb.append(this.command.name()).append(EOL);
@@ -140,58 +150,63 @@ public class StompFrame {
 
 		sb.append(NULL_STRING);
 
-		return sb.toString();
+		return this.asString = sb.toString();
 	}
 
-	static ByteBuffer putInBuffer(ByteBuffer byteBuffer, byte[]... byteArrays) {
+	void putInBuffer(byte[]... byteArrays) {
 		for (byte[] byteArray : byteArrays) {
-			if (byteBuffer.position() + byteArray.length > byteBuffer.limit()) {
-				int newSize = byteBuffer.limit() << 1;
-				if (newSize < byteBuffer.limit()) {
-					newSize = byteBuffer.limit() + byteArray.length;
+			if (this.asByteBuffer.position() + byteArray.length > this.asByteBuffer.limit()) {
+				int newSize = this.asByteBuffer.limit() << 1;
+				if (newSize < this.asByteBuffer.limit()) {
+					newSize = this.asByteBuffer.limit() + byteArray.length;
 				}
-				if (newSize < byteBuffer.limit()) {
+				if (newSize < this.asByteBuffer.limit()) {
 					throw new OutOfMemoryError();
 				}
 
-				ByteBuffer temp = byteBuffer;
+				ByteBuffer temp = this.asByteBuffer;
 				int size = temp.position();
 				temp.rewind().limit(size);
 
-				byteBuffer = ByteBuffer.allocate(newSize);
-				byteBuffer.put(temp);
+				this.asByteBuffer = ByteBuffer.allocate(newSize);
+				this.asByteBuffer.put(temp);
 			}
-			byteBuffer.put(byteArray);
+			this.asByteBuffer.put(byteArray);
 		}
-		return byteBuffer;
 	}
 
 	public ByteBuffer toByteBuffer() {
-		ByteBuffer buffer = ByteBuffer.allocate(this.capacityGuesstimate());
+		if (this.asByteBuffer != null) {
+			return this.asByteBuffer.asReadOnlyBuffer();
+		}
 
-		buffer = putInBuffer(buffer, this.command.name().getBytes(DEFAULT_CHARSET), EOL_BYTES);
+		this.asByteBuffer = ByteBuffer.allocate(this.capacityGuesstimate());
+
+		this.putInBuffer(this.command.name().getBytes(DEFAULT_CHARSET), EOL_BYTES);
 
 		for (Map.Entry<String, List<String>> entry : this.headers.entrySet()) {
 			byte[] key = entry.getKey().getBytes(DEFAULT_CHARSET);
 			for (String value : entry.getValue()) {
-				buffer = putInBuffer(buffer, key, HEADER_SEPARATOR_BYTES);
+				this.putInBuffer(key, HEADER_SEPARATOR_BYTES);
 				if (value != null) {
-					buffer = putInBuffer(buffer, value.getBytes(DEFAULT_CHARSET));
+					this.putInBuffer(value.getBytes(DEFAULT_CHARSET));
 				}
-				buffer = putInBuffer(buffer, EOL_BYTES);
+				this.putInBuffer(EOL_BYTES);
 			}
 		}
 
-		buffer = putInBuffer(buffer, EOL_BYTES);
+		this.putInBuffer(EOL_BYTES);
 
 		if (this.body != null) {
-			buffer = putInBuffer(buffer, this.body);
+			this.putInBuffer(this.body);
 		}
 
-		buffer = putInBuffer(buffer, NULL_BYTES);
+		this.putInBuffer(NULL_BYTES);
 
-		int size = buffer.position();
-		return buffer.rewind().limit(size).asReadOnlyBuffer();
+		int size = this.asByteBuffer.position();
+		this.asByteBuffer.rewind().limit(size);
+
+		return this.asByteBuffer.asReadOnlyBuffer();
 	}
 
 	public WebSocketMessage toWebSocketMessage(WebSocketSession session) {

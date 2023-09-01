@@ -13,6 +13,8 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,12 +52,10 @@ final class StompHandler implements WebSocketHandler {
 	}
 
 	// Caches
-	// SessionId -> Subscription -> ACK Mode
-	final ConcurrentHashMap<String, ConcurrentHashMap<String, AckMode>> ackModeCache = new ConcurrentHashMap<>();
+	// SessionId -> Subscription -> <ACK Mode, [Ack, ...]>
+	final ConcurrentHashMap<String, ConcurrentHashMap<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>>> ackSubscriptionCache = new ConcurrentHashMap<>();
 	// SessionId -> Ack -> StompFrame
-	final ConcurrentHashMap<String, ConcurrentHashMap<String, StompFrame>> ackMessageCache = new ConcurrentHashMap<>();
-	// SessionId -> Subscription -> [Ack, ...]
-	final ConcurrentHashMap<String, ConcurrentHashMap<String, ConcurrentLinkedQueue<String>>> ackSubscriptionCache = new ConcurrentHashMap<>();
+	final ConcurrentHashMap<String, ConcurrentHashMap<String, StompFrame>> ackFrameCache = new ConcurrentHashMap<>();
 
 	final Map<StompCommand, BiFunction<WebSocketSession, StompFrame, Mono<StompFrame>>> handler = Map.ofEntries(
 			entry(StompCommand.STOMP, this::handleStomp),
@@ -74,11 +74,14 @@ final class StompHandler implements WebSocketHandler {
 	Flux<StompFrame> sessionReceiver(WebSocketSession session) {
 		return session.receive()
 				.map(StompFrame::from)
-				.flatMap(message -> this.server.doOnEachInbound(session, message).then(Mono.just(message)))
-				.takeUntil(message -> message.command == StompCommand.DISCONNECT)
-				.flatMap(inbound -> this.handler.get(inbound.command).apply(session, inbound)
-						.flatMap(outbound -> outbound.error() ? handleError(session, inbound, outbound) : Mono.just(outbound)))
-				.takeUntil(StompFrame::error)
+				.flatMap(inbound -> this.server.doOnEachInbound(session, inbound).thenReturn(inbound))
+				.takeUntil(inbound -> inbound.command == StompCommand.DISCONNECT)
+				.flatMap(inbound ->
+						this.handler.get(inbound.command)
+								.apply(session, inbound)
+								.flatMap(outbound -> this.handleError(session, inbound, outbound).thenReturn(outbound))
+				)
+				.takeUntil(outbound -> outbound.command == StompCommand.ERROR)
 				.doOnError(ex -> log.error("Error during WebSocket handling: {}", ex.getMessage()))
 				.doFinally(signalType -> session.close().subscribeOn(Schedulers.immediate()).subscribe());
 	}
@@ -86,16 +89,15 @@ final class StompHandler implements WebSocketHandler {
 	@NonNull
 	@Override
 	public Mono<Void> handle(WebSocketSession session) {
-		return session.send(this.server.addWebSocketSources(session)
-				.flatMapMany(Flux::merge)
-				.mergeWith(sessionReceiver(session))
-				.switchIfEmpty(sessionReceiver(session))
-				.doOnNext(outbound -> cacheMessageForAck(session, outbound))
-				.flatMap(message -> this.server.doOnEachOutbound(session, message).then(Mono.just(message)))
-				.map(message -> message.toWebSocketMessage(session))
+		return session.send(
+				this.sessionReceiver(session)
+						.mergeWith(this.server.addWebSocketSources(session).flatMapMany(Flux::merge))
+						.doOnNext(outbound -> this.cacheMessageForAck(session, outbound))
+						.flatMap(outbound -> this.server.doOnEachOutbound(session, outbound).thenReturn(outbound))
+						.map(outbound -> outbound.toWebSocketMessage(session))
 		).then(Mono.defer(() -> {
-			Pair<Map<String, ConcurrentLinkedQueue<String>>, Map<String, StompFrame>> sessionCaches = handleDisconnect(session);
-			return this.server.doFinally(session, sessionCaches.one, sessionCaches.two);
+			String sessionId = session.getId();
+			return this.server.doFinally(session, this.ackSubscriptionCache.remove(sessionId), this.ackFrameCache.remove(sessionId));
 		}));
 	}
 
@@ -104,7 +106,7 @@ final class StompHandler implements WebSocketHandler {
 		Version usingVersion;
 		if (versionsString != null) {
 			Set<String> versionsSet = Set.of(versionsString.split(","));
-			usingVersion = SUPPORTED_VERSIONS.stream().filter(version -> versionsSet.contains(version.toString())).findFirst().orElse(null);
+			usingVersion = SUPPORTED_VERSIONS.stream().filter(version -> versionsSet.contains(version.version)).findFirst().orElse(null);
 		} else {
 			usingVersion = Version.v1_0;
 		}
@@ -136,11 +138,11 @@ final class StompHandler implements WebSocketHandler {
 	}
 
 	Mono<StompFrame> handleStomp(WebSocketSession session, StompFrame inbound) {
-		return handleProtocolNegotiation(session, inbound, this.server::onStomp);
+		return this.handleProtocolNegotiation(session, inbound, this.server::onStomp);
 	}
 
 	Mono<StompFrame> handleConnect(WebSocketSession session, StompFrame inbound) {
-		return handleProtocolNegotiation(session, inbound, this.server::onConnect);
+		return this.handleProtocolNegotiation(session, inbound, this.server::onConnect);
 	}
 
 	Mono<StompFrame> handleSend(WebSocketSession session, StompFrame inbound) {
@@ -164,8 +166,8 @@ final class StompHandler implements WebSocketHandler {
 
 		AckMode ackMode = AckMode.from(inbound.headers.getFirst(StompHeaders.ACK));
 		if (ackMode != null && ackMode != AckMode.AUTO) {
-			this.ackModeCache.computeIfAbsent(session.getId(), k -> new ConcurrentHashMap<>())
-					.put(subscriptionId, ackMode);
+			this.ackSubscriptionCache.computeIfAbsent(session.getId(), k -> new ConcurrentHashMap<>())
+					.put(subscriptionId, Tuples.of(ackMode, new ConcurrentLinkedQueue<>()));
 		}
 
 		return this.server.onSubscribe(session, inbound, StompUtils.makeReceipt(inbound), destination, subscriptionId);
@@ -179,86 +181,75 @@ final class StompHandler implements WebSocketHandler {
 			return Mono.just(StompUtils.makeMalformedError(inbound, StompHeaders.ID));
 		}
 
-		Optional.ofNullable(this.ackModeCache.get(sessionId)).ifPresent(map -> map.remove(subscriptionId));
-
-		ConcurrentLinkedQueue<String> messageQueueCache = Optional.ofNullable(this.ackSubscriptionCache.get(sessionId))
+		ConcurrentLinkedQueue<String> frameQueueCache = Optional.ofNullable(this.ackSubscriptionCache.get(sessionId))
 				.map(map -> map.remove(subscriptionId))
+				.map(Tuple2::getT2)
 				.orElse(null);
-		if (messageQueueCache != null) {
-			ConcurrentHashMap<String, StompFrame> messagesCache = this.ackMessageCache.get(sessionId);
-			if (messagesCache != null) {
-				messageQueueCache.forEach(messagesCache::remove);
+		if (frameQueueCache != null) {
+			ConcurrentHashMap<String, StompFrame> frameCache = this.ackFrameCache.get(sessionId);
+			if (frameCache != null) {
+				frameQueueCache.forEach(frameCache::remove);
 			}
 		}
 		return this.server.onUnsubscribe(session, inbound, StompUtils.makeReceipt(inbound), subscriptionId);
 	}
 
-	Mono<StompFrame> handleAckOrNack(WebSocketSession session, StompFrame inbound,
-									 QuadConsumer<AckMode, ConcurrentHashMap<String, StompFrame>, List<StompFrame>, String> removeMessage,
-									 HexFunction<WebSocketSession, StompFrame, StompFrame, String, String, List<StompFrame>, Mono<StompFrame>> onFunction) {
+	Mono<StompFrame> handleAckOrNack(WebSocketSession session, StompFrame inbound, HexFunction<WebSocketSession, StompFrame, StompFrame, String, String, List<StompFrame>, Mono<StompFrame>> onFunction) {
 		String sessionId = session.getId();
-		String ack = inbound.headers.getFirst(StompHeaders.ID);
-		if (ack == null) {
+		String ackId = inbound.headers.getFirst(StompHeaders.ID);
+		if (ackId == null) {
 			return Mono.just(StompUtils.makeMalformedError(inbound, StompHeaders.ID));
 		}
 
-		ConcurrentHashMap<String, StompFrame> messagesCache = this.ackMessageCache.get(sessionId);
-		if (messagesCache == null) {
+		ConcurrentHashMap<String, StompFrame> frameCache = this.ackFrameCache.get(sessionId);
+		if (frameCache == null) {
 			return Mono.just(StompUtils.makeError(inbound, "session info not found in cache"));
 		}
 
-		StompFrame frame = messagesCache.get(ack);
+		StompFrame frame = frameCache.get(ackId);
 		if (frame == null) {
-			return Mono.just(StompUtils.makeError(inbound, "message info not found in cache"));
+			return Mono.just(StompUtils.makeError(inbound, "frame info not found in cache"));
 		}
 
 		String subscription = frame.headers.getFirst(StompHeaders.SUBSCRIPTION);
 		Assert.notNull(subscription, "Sent MESSAGE without subscription");
 
-		AckMode ackMode = this.ackModeCache.get(sessionId).get(subscription);
+		Tuple2<AckMode, ConcurrentLinkedQueue<String>> subscriptionInfo = Optional.ofNullable(this.ackSubscriptionCache.get(sessionId))
+				.map(cache -> cache.get(subscription))
+				.orElse(null);
+		if (subscriptionInfo == null) {
+			return Mono.just(StompUtils.makeError(inbound, "subscription info not found in cache"));
+		}
+
 		List<StompFrame> ackOrNackMessages = new LinkedList<>();
-		Optional.ofNullable(this.ackSubscriptionCache.get(sessionId))
-				.map(map -> map.get(subscription))
-				.ifPresent(queue -> {
-					if (ackMode == AckMode.CLIENT) {
-						synchronized (queue) {
-							if (queue.contains(ack)) {
-								String id;
-								do {
-									id = queue.poll();
-									if (id == null) break;
-									removeMessage.accept(ackMode, messagesCache, ackOrNackMessages, id);
-								} while (!id.equals(ack));
-							}
-						}
-					} else if (ackMode == AckMode.CLIENT_INDIVIDUAL) {
-						queue.remove(ack);
-						removeMessage.accept(ackMode, messagesCache, ackOrNackMessages, ack);
-					}
-				});
-		return onFunction.apply(session, inbound, StompUtils.makeReceipt(inbound), subscription, ack, ackOrNackMessages);
+		if (subscriptionInfo.getT1() == AckMode.CLIENT) {
+			synchronized (subscriptionInfo.getT2()) {
+				if (subscriptionInfo.getT2().contains(ackId)) {
+					String a;
+					do {
+						a = subscriptionInfo.getT2().poll();
+						if (a == null) break;
+						Optional.ofNullable(frameCache.remove(a)).ifPresent(ackOrNackMessages::add);
+					} while (!a.equals(ackId));
+				}
+			}
+		} else if (subscriptionInfo.getT1() == AckMode.CLIENT_INDIVIDUAL) {
+			subscriptionInfo.getT2().remove(ackId);
+			Optional.ofNullable(frameCache.remove(ackId)).ifPresent(ackOrNackMessages::add);
+		}
+
+		return onFunction.apply(session, inbound, StompUtils.makeReceipt(inbound), subscription, ackId, ackOrNackMessages);
 	}
 
 	Mono<StompFrame> handleAck(WebSocketSession session, StompFrame inbound) {
-		return handleAckOrNack(session, inbound,
-				(ackMode, cache, messages, id) -> Optional.ofNullable(cache.remove(id)).ifPresent(messages::add),
-				this.server::onAck
-		);
+		return this.handleAckOrNack(session, inbound, this.server::onAck);
 	}
 
 	Mono<StompFrame> handleNack(WebSocketSession session, StompFrame inbound) {
-		return handleAckOrNack(session, inbound,
-				(ackMode, cache, messages, id) -> Optional.ofNullable(cache.remove(id))
-						.ifPresent(frame -> {
-							messages.add(frame);
-							log.debug("NACK Frame: ackMode={} message={}", ackMode.toString(), frame);
-						}),
-				this.server::onNack
-		);
+		return this.handleAckOrNack(session, inbound, this.server::onNack);
 	}
 
-	Mono<StompFrame> handleTransactionFrame(WebSocketSession session, StompFrame inbound,
-											QuadFunction<WebSocketSession, StompFrame, StompFrame, String, Mono<StompFrame>> onFunction) {
+	Mono<StompFrame> handleTransactionFrame(WebSocketSession session, StompFrame inbound, QuadFunction<WebSocketSession, StompFrame, StompFrame, String, Mono<StompFrame>> onFunction) {
 		String transaction = inbound.headers.getFirst(StompUtils.TRANSACTION);
 		if (transaction == null) {
 			return Mono.just(StompUtils.makeMalformedError(inbound, StompUtils.TRANSACTION));
@@ -267,31 +258,28 @@ final class StompHandler implements WebSocketHandler {
 	}
 
 	Mono<StompFrame> handleBegin(WebSocketSession session, StompFrame inbound) {
-		return handleTransactionFrame(session, inbound, this.server::onBegin);
+		return this.handleTransactionFrame(session, inbound, this.server::onBegin);
 	}
 
 	Mono<StompFrame> handleCommit(WebSocketSession session, StompFrame inbound) {
-		return handleTransactionFrame(session, inbound, this.server::onCommit);
+		return this.handleTransactionFrame(session, inbound, this.server::onCommit);
 	}
 
 	Mono<StompFrame> handleAbort(WebSocketSession session, StompFrame inbound) {
-		return handleTransactionFrame(session, inbound, this.server::onAbort);
-	}
-
-	Pair<Map<String, ConcurrentLinkedQueue<String>>, Map<String, StompFrame>> handleDisconnect(WebSocketSession session) {
-		String sessionId = session.getId();
-		this.ackModeCache.remove(sessionId);
-		return new Pair<>(this.ackSubscriptionCache.remove(sessionId), this.ackMessageCache.remove(sessionId));
+		return this.handleTransactionFrame(session, inbound, this.server::onAbort);
 	}
 
 	Mono<StompFrame> handleDisconnect(WebSocketSession session, StompFrame inbound) {
-		Pair<Map<String, ConcurrentLinkedQueue<String>>, Map<String, StompFrame>> sessionCaches = handleDisconnect(session);
-		return this.server.onDisconnect(session, inbound, StompUtils.makeReceipt(inbound), sessionCaches.one, sessionCaches.two);
+		String sessionId = session.getId();
+		return this.server.onDisconnect(session, inbound, StompUtils.makeReceipt(inbound), this.ackSubscriptionCache.remove(sessionId), this.ackFrameCache.remove(sessionId));
 	}
 
-	Mono<StompFrame> handleError(WebSocketSession session, StompFrame inbound, StompFrame outbound) {
-		Pair<Map<String, ConcurrentLinkedQueue<String>>, Map<String, StompFrame>> sessionCaches = handleDisconnect(session);
-		return this.server.onError(session, inbound, outbound, sessionCaches.one, sessionCaches.two);
+	Mono<Void> handleError(WebSocketSession session, StompFrame inbound, StompFrame outbound) {
+		if (outbound.command != StompCommand.ERROR) {
+			return Mono.empty();
+		}
+		String sessionId = session.getId();
+		return this.server.onError(session, inbound, outbound, this.ackSubscriptionCache.remove(sessionId), this.ackFrameCache.remove(sessionId));
 	}
 
 	void cacheMessageForAck(WebSocketSession session, StompFrame outbound) {
@@ -300,45 +288,21 @@ final class StompHandler implements WebSocketHandler {
 		}
 
 		String sessionId = session.getId();
-
-		ConcurrentHashMap<String, AckMode> subscriptionAckMode = this.ackModeCache.get(sessionId);
-		if (subscriptionAckMode == null) {
-			return;
-		}
-
 		String subscription = outbound.headers.getFirst(StompHeaders.SUBSCRIPTION);
 		Assert.notNull(subscription, "Trying to send MESSAGE without subscription");
 
-		AckMode ackMode = subscriptionAckMode.get(subscription);
-		if (ackMode == null || ackMode == AckMode.AUTO) {
+		Tuple2<AckMode, ConcurrentLinkedQueue<String>> subscriptionInfo = Optional.ofNullable(this.ackSubscriptionCache.get(sessionId))
+				.map(cache -> cache.get(subscription))
+				.orElse(null);
+		if (subscriptionInfo == null || subscriptionInfo.getT1() == AckMode.AUTO) {
 			return;
 		}
 
-		String ack = UUID.randomUUID().toString();
-		this.ackMessageCache.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>())
-				.put(ack, outbound);
-		this.ackSubscriptionCache.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>())
-				.computeIfAbsent(subscription, k -> new ConcurrentLinkedQueue<>())
-				.add(ack);
+		String ackId = UUID.randomUUID().toString();
+		subscriptionInfo.getT2().add(ackId);
+		this.ackFrameCache.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>()).put(ackId, outbound);
 
-		outbound.headers.add(StompHeaders.ACK, ack);
-	}
-
-	static class Pair<T1, T2> {
-
-		T1 one;
-		T2 two;
-
-		Pair(T1 one, T2 two) {
-			this.one = one;
-			this.two = two;
-		}
-
-	}
-
-	@FunctionalInterface
-	interface QuadConsumer<T, U, V, W> {
-		void accept(T t, U u, V v, W w);
+		outbound.headers.add(StompHeaders.ACK, ackId);
 	}
 
 	@FunctionalInterface

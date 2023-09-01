@@ -11,6 +11,7 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.util.function.Tuple2;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -28,7 +29,7 @@ public class ComplexStompServer implements StompServer {
 	public static final String SIMPLE_WEBSOCKET_PATH = "/complex";
 
 	private static final int REALLY_LARGE_NUMBER = 14;
-	private static final long DELAY_MILLIS = 300;
+	private static final long DELAY_MILLIS = 300L;
 
 	public static StompFrame generateMessage(String destination, String subscriptionId, int i) {
 		return StompUtils.makeMessage(destination, subscriptionId, i > 0 ? String.valueOf(i) : "Watch me count (complexly)!");
@@ -62,10 +63,10 @@ public class ComplexStompServer implements StompServer {
 	}
 
 	@Override
-	public Mono<Void> doFinally(WebSocketSession session, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, StompFrame> messagesCache) {
+	public Mono<Void> doFinally(WebSocketSession session, Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, Map<String, StompFrame> frameCache) {
 		this.sessionCounters.remove(session.getId());
 		log.info("Closing session {}", session.getId());
-		return StompServer.super.doFinally(session, messagesQueueBySubscription, messagesCache);
+		return StompServer.super.doFinally(session, subscriptionCache, frameCache);
 	}
 
 	@Override
@@ -98,9 +99,9 @@ public class ComplexStompServer implements StompServer {
 	}
 
 	@Override
-	public Mono<StompFrame> onDisconnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, ConcurrentLinkedQueue<String>> messagesQueueBySubscription, Map<String, StompFrame> messagesCache) {
+	public Mono<StompFrame> onDisconnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, Map<String, StompFrame> frameCache) {
 		log.debug("Now that's a graceful disconnection!");
-		return StompServer.super.onDisconnect(session, inbound, outbound, messagesQueueBySubscription, messagesCache);
+		return StompServer.super.onDisconnect(session, inbound, outbound, subscriptionCache, frameCache);
 	}
 
 }
