@@ -8,7 +8,10 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.MimeType;
 import org.springframework.util.MultiValueMap;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class StompUtils {
 
@@ -78,20 +81,11 @@ public class StompUtils {
 		Assert.notNull(destination, "'destination' must not be null");
 		Assert.notNull(subscription, "'subscription' must not be null");
 
-		MultiValueMap<String, String> headers = CollectionUtils.toMultiValueMap(new HashMap<>() {{
-			put(StompHeaders.DESTINATION, new ArrayList<>(1) {{
-				add(destination);
-			}});
-			put(StompHeaders.SUBSCRIPTION, new ArrayList<>(1) {{
-				add(subscription);
-			}});
-			put(StompHeaders.MESSAGE_ID, new ArrayList<>(1) {{
-				add(UUID.randomUUID().toString());
-			}});
-			put(StompHeaders.CONTENT_LENGTH, new ArrayList<>(1) {{
-				add(getContentLength(body));
-			}});
-		}});
+		MultiValueMap<String, String> headers = CollectionUtils.toMultiValueMap(new HashMap<>());
+		headers.add(StompHeaders.DESTINATION, destination);
+		headers.add(StompHeaders.SUBSCRIPTION, subscription);
+		headers.add(StompHeaders.MESSAGE_ID, UUID.randomUUID().toString());
+		headers.add(StompHeaders.CONTENT_LENGTH, getContentLength(body));
 
 		String contentTypeString = getContentType(contentType);
 		if (contentTypeString != null) {
@@ -113,9 +107,10 @@ public class StompUtils {
 			return null;
 		}
 
-		return new StompFrame(StompCommand.RECEIPT, CollectionUtils.toMultiValueMap(Map.of(
-				StompHeaders.RECEIPT_ID, Collections.singletonList(receipt)
-		)), null, null);
+		MultiValueMap<String, String> headers = CollectionUtils.toMultiValueMap(new HashMap<>());
+		headers.add(StompHeaders.RECEIPT_ID, receipt);
+
+		return new StompFrame(StompCommand.RECEIPT, headers, null, null);
 	}
 
 	static StompFrame makeMalformedError(StompFrame inbound, String missingHeader) {
@@ -173,14 +168,9 @@ public class StompUtils {
 		Assert.notNull(inbound, "'inbound' must not be null");
 		Assert.notNull(errorHeader, "'errorHeader' must not be null");
 
-		MultiValueMap<String, String> headers = CollectionUtils.toMultiValueMap(new HashMap<>() {{
-			put(MESSAGE, new ArrayList<>(1) {{
-				add(errorHeader);
-			}});
-			put(StompHeaders.CONTENT_LENGTH, new ArrayList<>(1) {{
-				add(getContentLength(body));
-			}});
-		}});
+		MultiValueMap<String, String> headers = CollectionUtils.toMultiValueMap(new HashMap<>());
+		headers.add(MESSAGE, errorHeader);
+		headers.add(StompHeaders.CONTENT_LENGTH, getContentLength(body));
 
 		String contentTypeString = getContentType(contentType);
 		if (contentTypeString != null) {

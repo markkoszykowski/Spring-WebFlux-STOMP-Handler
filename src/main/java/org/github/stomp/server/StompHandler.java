@@ -8,6 +8,7 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
@@ -112,12 +113,10 @@ final class StompHandler implements WebSocketHandler {
 		}
 
 		if (usingVersion == null) {
-			return Mono.just(StompUtils.makeError(inbound, "unsupported protocol versions",
-					new HashMap<>() {{
-						put(StompUtils.VERSION, new ArrayList<>(1) {{
-							add(versionsToString(","));
-						}});
-					}}, String.format("Supported protocol versions are %s", versionsToString(" "))
+			MultiValueMap<String, String> headers = CollectionUtils.toMultiValueMap(new HashMap<>());
+			headers.add(StompUtils.VERSION, versionsToString(","));
+
+			return Mono.just(StompUtils.makeError(inbound, "unsupported protocol versions", headers, String.format("Supported protocol versions are %s", versionsToString(" "))
 			));
 		}
 
@@ -126,15 +125,11 @@ final class StompHandler implements WebSocketHandler {
 			return Mono.just(StompUtils.makeMalformedError(inbound, StompHeaders.HOST));
 		}
 
-		return onFunction.apply(session, inbound, new StompFrame(StompCommand.CONNECTED,
-				CollectionUtils.toMultiValueMap(new HashMap<>() {{
-					put(StompUtils.VERSION, new ArrayList<>(1) {{
-						add(usingVersion.toString());
-					}});
-					put(StompHeaders.SESSION, new ArrayList<>(1) {{
-						add(session.getId());
-					}});
-				}}), null, null), usingVersion, host);
+		MultiValueMap<String, String> headers = CollectionUtils.toMultiValueMap(new HashMap<>());
+		headers.add(StompUtils.VERSION, usingVersion.toString());
+		headers.add(StompHeaders.SESSION, session.getId());
+
+		return onFunction.apply(session, inbound, new StompFrame(StompCommand.CONNECTED, headers, null, null), usingVersion, host);
 	}
 
 	Mono<StompFrame> handleStomp(WebSocketSession session, StompFrame inbound) {
