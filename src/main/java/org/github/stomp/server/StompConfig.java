@@ -17,7 +17,7 @@ class StompConfig {
 
 	final Map<String, StompHandler> handlerMap;
 
-	StompConfig(List<? extends StompServer> servers) {
+	StompConfig(final List<? extends StompServer> servers) {
 		this.handlerMap = servers.stream()
 				.map(StompHandler::new)
 				.collect(Collectors.toMap(handler -> handler.server.path(), Function.identity()));

@@ -31,7 +31,7 @@ public class SimpleStompServer implements StompServer {
 	private static final int REALLY_LARGE_NUMBER = 7;
 	private static final long DELAY_MILLIS = 300L;
 
-	public static StompFrame generateMessage(String destination, String subscriptionId, int i) {
+	public static StompFrame generateMessage(final String destination, final String subscriptionId, final int i) {
 		return StompUtils.makeMessage(destination, subscriptionId, i > 0 ? String.valueOf(i) : "Watch me count!");
 	}
 
@@ -43,7 +43,7 @@ public class SimpleStompServer implements StompServer {
 	}
 
 	@Override
-	public Mono<List<Flux<StompFrame>>> addWebSocketSources(WebSocketSession session) {
+	public Mono<List<Flux<StompFrame>>> addWebSocketSources(final WebSocketSession session) {
 		return Mono.just(Collections.singletonList(
 				this.sessionCounters.compute(session.getId(), (k, v) -> Sinks.many().unicast().onBackpressureBuffer())
 						.asFlux().delayElements(Duration.ofMillis(DELAY_MILLIS))
@@ -51,39 +51,39 @@ public class SimpleStompServer implements StompServer {
 	}
 
 	@Override
-	public Mono<Void> doOnEachInbound(WebSocketSession session, StompFrame inbound) {
+	public Mono<Void> doOnEachInbound(final WebSocketSession session, final StompFrame inbound) {
 		log.debug("Session {} -> Receiving:\n{}", session.getId(), inbound);
 		return StompServer.super.doOnEachInbound(session, inbound);
 	}
 
 	@Override
-	public Mono<Void> doOnEachOutbound(WebSocketSession session, StompFrame outbound) {
+	public Mono<Void> doOnEachOutbound(final WebSocketSession session, final StompFrame outbound) {
 		log.debug("Session {} -> Sending:\n{}", session.getId(), outbound);
 		return StompServer.super.doOnEachOutbound(session, outbound);
 	}
 
 	@Override
-	public Mono<Void> doFinally(WebSocketSession session, Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, Map<String, StompFrame> frameCache) {
+	public Mono<Void> doFinally(final WebSocketSession session, final Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
 		this.sessionCounters.remove(session.getId());
 		log.info("Closing session {}", session.getId());
 		return StompServer.super.doFinally(session, subscriptionCache, frameCache);
 	}
 
 	@Override
-	public Mono<StompFrame> onStomp(WebSocketSession session, StompFrame inbound, StompFrame outbound, Version version, String host) {
+	public Mono<StompFrame> onStomp(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Version version, final String host) {
 		log.debug("Sweet, new connection!");
 		return StompServer.super.onStomp(session, inbound, outbound, version, host);
 	}
 
 	@Override
-	public Mono<StompFrame> onConnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Version version, String host) {
+	public Mono<StompFrame> onConnect(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Version version, final String host) {
 		log.debug("Sweet, new connection!");
 		return StompServer.super.onConnect(session, inbound, outbound, version, host);
 	}
 
 	@Override
-	public Mono<StompFrame> onSubscribe(WebSocketSession session, StompFrame inbound, StompFrame outbound, String destination, String subscriptionId) {
-		Sinks.Many<StompFrame> userSink = this.sessionCounters.get(session.getId());
+	public Mono<StompFrame> onSubscribe(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final String destination, final String subscriptionId) {
+		final Sinks.Many<StompFrame> userSink = this.sessionCounters.get(session.getId());
 		for (int i = 0; i < REALLY_LARGE_NUMBER + 1; i++) {
 			userSink.tryEmitNext(generateMessage(destination, subscriptionId, i)).orThrow();
 		}
@@ -91,15 +91,15 @@ public class SimpleStompServer implements StompServer {
 			return Mono.just(outbound);
 		}
 		// Testing non-default charset encodings
-		Charset charset = StandardCharsets.UTF_16LE;
-		String body = "You didn't want a receipt... But you get this instead:\nCongrats! You have subscribed!";
+		final Charset charset = StandardCharsets.UTF_16LE;
+		final String body = "You didn't want a receipt... But you get this instead:\nCongrats! You have subscribed!";
 		return Mono.just(StompUtils.makeMessage(destination, subscriptionId, Map.of(
 				"congrats", Collections.singletonList("you're subscribed!")
 		), new MimeType(MediaType.TEXT_PLAIN, charset), body.getBytes(charset)));
 	}
 
 	@Override
-	public Mono<StompFrame> onDisconnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, Map<String, StompFrame> frameCache) {
+	public Mono<StompFrame> onDisconnect(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
 		log.debug("Now that's a graceful disconnection!");
 		return StompServer.super.onDisconnect(session, inbound, outbound, subscriptionCache, frameCache);
 	}

@@ -24,7 +24,7 @@ public interface StompServer {
 		final float floatVersion;
 		final String version;
 
-		Version(String version) {
+		Version(final String version) {
 			this.version = version;
 			this.floatVersion = Float.parseFloat(version);
 		}
@@ -43,11 +43,11 @@ public interface StompServer {
 
 		final String ackMode;
 
-		AckMode(String ackMode) {
+		AckMode(final String ackMode) {
 			this.ackMode = ackMode;
 		}
 
-		public static AckMode from(String ackMode) {
+		public static AckMode from(final String ackMode) {
 			if (ackMode == null) {
 				return null;
 			}
@@ -70,7 +70,7 @@ public interface StompServer {
 	 * @param session The session to add frame sources to.
 	 * @return The list of sources to propagate frames.
 	 */
-	default Mono<List<Flux<StompFrame>>> addWebSocketSources(WebSocketSession session) {
+	default Mono<List<Flux<StompFrame>>> addWebSocketSources(final WebSocketSession session) {
 		return Mono.empty();
 	}
 
@@ -80,7 +80,7 @@ public interface StompServer {
 	 * @param session The associated websocket session.
 	 * @param inbound The inbound STOMP frame.
 	 */
-	default Mono<Void> doOnEachInbound(WebSocketSession session, StompFrame inbound) {
+	default Mono<Void> doOnEachInbound(final WebSocketSession session, final StompFrame inbound) {
 		return Mono.empty();
 	}
 
@@ -90,7 +90,7 @@ public interface StompServer {
 	 * @param session  The associated websocket session.
 	 * @param outbound The outbound STOMP frame.
 	 */
-	default Mono<Void> doOnEachOutbound(WebSocketSession session, StompFrame outbound) {
+	default Mono<Void> doOnEachOutbound(final WebSocketSession session, final StompFrame outbound) {
 		return Mono.empty();
 	}
 
@@ -104,7 +104,7 @@ public interface StompServer {
 	 * @see StompServer#onDisconnect(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 * @see StompServer#onError(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<Void> doFinally(WebSocketSession session, Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, Map<String, StompFrame> frameCache) {
+	default Mono<Void> doFinally(final WebSocketSession session, final Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
 		return Mono.empty();
 	}
 
@@ -118,7 +118,7 @@ public interface StompServer {
 	 * @param host     The host requested in the client frame. May be <code>null</code>
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompFrame> onStomp(WebSocketSession session, StompFrame inbound, StompFrame outbound, Version version, String host) {
+	default Mono<StompFrame> onStomp(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Version version, final String host) {
 		return Mono.just(outbound);
 	}
 
@@ -132,7 +132,7 @@ public interface StompServer {
 	 * @param host     The host requested in the client frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompFrame> onConnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Version version, String host) {
+	default Mono<StompFrame> onConnect(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Version version, final String host) {
 		return Mono.just(outbound);
 	}
 
@@ -145,7 +145,7 @@ public interface StompServer {
 	 * @param destination The destination of the <code>SEND</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompFrame> onSend(WebSocketSession session, StompFrame inbound, StompFrame outbound, String destination) {
+	default Mono<StompFrame> onSend(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final String destination) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -159,7 +159,7 @@ public interface StompServer {
 	 * @param subscriptionId The subscriptionId of the <code>SUBSCRIBE</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompFrame> onSubscribe(WebSocketSession session, StompFrame inbound, StompFrame outbound, String destination, String subscriptionId) {
+	default Mono<StompFrame> onSubscribe(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final String destination, final String subscriptionId) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -172,7 +172,7 @@ public interface StompServer {
 	 * @param subscriptionId The subscriptionId of the <code>UNSUBSCRIBE</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompFrame> onUnsubscribe(WebSocketSession session, StompFrame inbound, StompFrame outbound, String subscriptionId) {
+	default Mono<StompFrame> onUnsubscribe(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final String subscriptionId) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -187,7 +187,7 @@ public interface StompServer {
 	 * @param ackMessages  The list of ack-ed messages.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompFrame> onAck(WebSocketSession session, StompFrame inbound, StompFrame outbound, String subscription, String id, List<StompFrame> ackMessages) {
+	default Mono<StompFrame> onAck(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final String subscription, final String id, final List<StompFrame> ackMessages) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -202,7 +202,7 @@ public interface StompServer {
 	 * @param nackMessages The list of nack-ed messages.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompFrame> onNack(WebSocketSession session, StompFrame inbound, StompFrame outbound, String subscription, String id, List<StompFrame> nackMessages) {
+	default Mono<StompFrame> onNack(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final String subscription, final String id, final List<StompFrame> nackMessages) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -215,7 +215,7 @@ public interface StompServer {
 	 * @param transaction The transaction of the <code>BEGIN</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompFrame> onBegin(WebSocketSession session, StompFrame inbound, StompFrame outbound, String transaction) {
+	default Mono<StompFrame> onBegin(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final String transaction) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -228,7 +228,7 @@ public interface StompServer {
 	 * @param transaction The transaction of the <code>COMMIT</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompFrame> onCommit(WebSocketSession session, StompFrame inbound, StompFrame outbound, String transaction) {
+	default Mono<StompFrame> onCommit(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final String transaction) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -241,7 +241,7 @@ public interface StompServer {
 	 * @param transaction The transaction of the <code>ABORT</code> frame.
 	 * @return The final outbound STOMP frame.
 	 */
-	default Mono<StompFrame> onAbort(WebSocketSession session, StompFrame inbound, StompFrame outbound, String transaction) {
+	default Mono<StompFrame> onAbort(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final String transaction) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -258,7 +258,7 @@ public interface StompServer {
 	 * @see StompServer#doFinally(WebSocketSession, Map, Map)
 	 * @see StompServer#onError(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<StompFrame> onDisconnect(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, Map<String, StompFrame> frameCache) {
+	default Mono<StompFrame> onDisconnect(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -275,7 +275,7 @@ public interface StompServer {
 	 * @see StompServer#doFinally(WebSocketSession, Map, Map)
 	 * @see StompServer#onDisconnect(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<Void> onError(WebSocketSession session, StompFrame inbound, StompFrame outbound, Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, Map<String, StompFrame> frameCache) {
+	default Mono<Void> onError(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
 		return Mono.empty();
 	}
 
