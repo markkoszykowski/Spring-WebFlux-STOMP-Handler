@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @Component
 public class ComplexStompServer implements StompServer {
 
-	public static final String SIMPLE_WEBSOCKET_PATH = "/complex";
+	public static final String COMPLEX_WEBSOCKET_PATH = "/complex";
 
 	private static final int REALLY_LARGE_NUMBER = 14;
 	private static final long DELAY_MILLIS = 300L;
@@ -39,7 +39,7 @@ public class ComplexStompServer implements StompServer {
 
 	@Override
 	public String path() {
-		return SIMPLE_WEBSOCKET_PATH;
+		return COMPLEX_WEBSOCKET_PATH;
 	}
 
 	@Override

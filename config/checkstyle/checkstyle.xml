@@ -37,7 +37,9 @@
 		<module name="AvoidNestedBlocks">
 			<property name="allowInSwitchCase" value="true"/>
 		</module>
-		<module name="EmptyBlock"/>
+		<module name="EmptyBlock">
+			<property name="tokens" value="LITERAL_FINALLY,LITERAL_IF,LITERAL_ELSE,INSTANCE_INIT,STATIC_INIT,LITERAL_SWITCH"/>
+		</module>
 		<module name="LeftCurly"/>
 		<module name="NeedBraces"/>
 		<module name="RightCurly"/>
@@ -83,46 +85,44 @@
 
 		<!-- See https://checkstyle.org/checks/misc/index.html -->
 		<module name="ArrayTypeStyle"/>
-		<module name="FinalParameters"/>
+		<module name="FinalParameters">
+			<property name="ignorePrimitiveTypes" value="true"/>
+		</module>
 		<module name="OuterTypeFilename"/>
 		<module name="UpperEll"/>
 
 
 		<!-- See https://checkstyle.org/checks/modifier/index.html -->
-		<module name="ClassMemberImpliedModifier">
-			<property name="violateImpliedStaticOnNestedEnum" value="false"/>
-			<property name="violateImpliedStaticOnNestedInterface" value="false"/>
-			<property name="violateImpliedStaticOnNestedRecord" value="false"/>
-		</module>
-		<module name="InterfaceMemberImpliedModifier">
-			<property name="violateImpliedAbstractMethod" value="false"/>
-			<property name="violateImpliedFinalField" value="false"/>
-			<property name="violateImpliedPublicField" value="false"/>
-			<property name="violateImpliedPublicMethod" value="false"/>
-			<property name="violateImpliedPublicNested" value="false"/>
-			<property name="violateImpliedStaticField" value="false"/>
-			<property name="violateImpliedStaticNested" value="false"/>
-		</module>
 		<module name="ModifierOrder"/>
 		<module name="RedundantModifier"/>
 
 
 		<!-- See https://checkstyle.org/checks/naming/index.html -->
 		<module name="AbbreviationAsWordInName"/>
-		<module name="ClassTypeParameterName"/>
-		<module name="ConstantName"/>
-		<module name="InterfaceTypeParameterName"/>
+		<module name="ClassTypeParameterName">
+			<property name="format" value="^[A-Z][a-zA-Z0-9]*$"/>
+		</module>
+		<module name="ConstantName">
+			<property name="format" value="^log(ger)?$|^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"/>
+		</module>
+		<module name="InterfaceTypeParameterName">
+			<property name="format" value="^[A-Z][a-zA-Z0-9]*$"/>
+		</module>
 		<module name="LambdaParameterName"/>
 		<module name="LocalFinalVariableName"/>
 		<module name="LocalVariableName"/>
 		<module name="MemberName"/>
 		<module name="MethodName"/>
-		<module name="MethodTypeParameterName"/>
+		<module name="MethodTypeParameterName">
+			<property name="format" value="^[A-Z][a-zA-Z0-9]*$"/>
+		</module>
 		<module name="PackageName"/>
 		<module name="ParameterName"/>
 		<module name="PatternVariableName"/>
 		<module name="RecordComponentName"/>
-		<module name="RecordTypeParameterName"/>
+		<module name="RecordTypeParameterName">
+			<property name="format" value="^[A-Z][a-zA-Z0-9]*$"/>
+		</module>
 		<module name="StaticVariableName"/>
 		<module name="TypeName"/>
 

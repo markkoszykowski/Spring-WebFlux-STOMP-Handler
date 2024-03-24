@@ -33,6 +33,7 @@ public interface StompServer {
 			return this.floatVersion;
 		}
 
+		@Override
 		public String toString() {
 			return this.version;
 		}
@@ -59,6 +60,7 @@ public interface StompServer {
 			return null;
 		}
 
+		@Override
 		public String toString() {
 			return this.ackMode;
 		}

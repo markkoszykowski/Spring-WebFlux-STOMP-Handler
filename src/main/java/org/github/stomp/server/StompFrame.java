@@ -43,6 +43,7 @@ public class StompFrame {
 	@Accessors(fluent = true)
 	final StompCommand command;
 	final MultiValueMap<String, String> headers;
+	MultiValueMap<String, String> immutableHeaders;
 	@Getter
 	@Accessors(fluent = true)
 	final Charset bodyCharset;
@@ -72,7 +73,7 @@ public class StompFrame {
 		final ByteBuffer byteBuffer = ByteBuffer.allocate(dataBuffer.readableByteCount());
 		dataBuffer.toByteBuffer(byteBuffer);
 
-		final Message<byte[]> message = DECODER.decode(byteBuffer).get(0);
+		final Message<byte[]> message = DECODER.decode(byteBuffer).getFirst();
 		final StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
 		this.command = accessor.getCommand();
@@ -97,7 +98,10 @@ public class StompFrame {
 	}
 
 	public MultiValueMap<String, String> headers() {
-		return CollectionUtils.unmodifiableMultiValueMap(this.headers);
+		if (this.immutableHeaders == null) {
+			this.immutableHeaders = CollectionUtils.unmodifiableMultiValueMap(this.headers);
+		}
+		return this.immutableHeaders;
 	}
 
 	public byte[] body() {
@@ -126,6 +130,7 @@ public class StompFrame {
 		return this.command.name().length() + (64 * this.headers.size()) + (this.body != null ? this.body.length : 0) + 4;
 	}
 
+	@Override
 	public String toString() {
 		if (this.asString != null) {
 			return this.asString;
@@ -171,10 +176,7 @@ public class StompFrame {
 					throw new OutOfMemoryError();
 				}
 
-				final ByteBuffer temp = this.asByteBuffer;
-				final int size = temp.position();
-				temp.rewind().limit(size);
-
+				final ByteBuffer temp = this.asByteBuffer.flip();
 				this.asByteBuffer = ByteBuffer.allocate(newSize);
 				this.asByteBuffer.put(temp);
 			}
@@ -210,10 +212,7 @@ public class StompFrame {
 
 		this.putInBuffer(NULL_BYTES);
 
-		final int size = this.asByteBuffer.position();
-		this.asByteBuffer.rewind().limit(size);
-
-		return this.asByteBuffer.asReadOnlyBuffer();
+		return this.asByteBuffer.flip().asReadOnlyBuffer();
 	}
 
 	public WebSocketMessage toWebSocketMessage(final WebSocketSession session) {
