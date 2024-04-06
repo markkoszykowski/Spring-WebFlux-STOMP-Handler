@@ -205,7 +205,7 @@ public class StompFrame {
 		return this.asByteBuffer.byteBuffer().asReadOnlyBuffer();
 	}
 
-	public WebSocketMessage toWebSocketMessage(final WebSocketSession session) {
+	WebSocketMessage toWebSocketMessage(final WebSocketSession session) {
 		return new WebSocketMessage(WebSocketMessage.Type.TEXT, session.bufferFactory().wrap(this.toByteBuffer()));
 	}
 
