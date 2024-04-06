@@ -19,8 +19,8 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Slf4j
 @Component
@@ -63,7 +63,7 @@ public class SimpleStompServer implements StompServer {
 	}
 
 	@Override
-	public Mono<Void> doFinally(final WebSocketSession session, final Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
+	public Mono<Void> doFinally(final WebSocketSession session, final Map<String, Tuple2<AckMode, Queue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
 		this.sessionCounters.remove(session.getId());
 		log.info("Closing session {}", session.getId());
 		return StompServer.super.doFinally(session, subscriptionCache, frameCache);
@@ -99,7 +99,7 @@ public class SimpleStompServer implements StompServer {
 	}
 
 	@Override
-	public Mono<StompFrame> onDisconnect(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
+	public Mono<StompFrame> onDisconnect(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Map<String, Tuple2<AckMode, Queue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
 		log.debug("Now that's a graceful disconnection!");
 		return StompServer.super.onDisconnect(session, inbound, outbound, subscriptionCache, frameCache);
 	}
