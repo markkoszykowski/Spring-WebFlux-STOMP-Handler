@@ -1,21 +1,34 @@
 [versions]
 # https://plugins.gradle.org/plugin/org.springframework.boot
 spring = "3.2.4"
+# https://mvnrepository.com/artifact/org.agrona/agrona
 agrona = "1.21.1"
+
+# https://mvnrepository.com/artifact/io.cucumber/cucumber-bom
+cucumber = "7.16.1"
+# https://mvnrepository.com/artifact/org.junit/junit-bom
+junit = "5.10.2"
 
 
 [libraries]
 spring-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring" }
 lombok = { module = "org.projectlombok:lombok" }
-spring-boot = { module = "org.springframework.boot:spring-boot" }
-spring-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure" }
 spring-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
 spring-websocket = { module = "org.springframework.boot:spring-boot-starter-websocket" }
+
 agrona = { module = "org.agrona:agrona", version.ref = "agrona" }
+
+cucumber-dependencies = { module = "io.cucumber:cucumber-bom", version.ref = "cucumber" }
+cucumber = { module = "io.cucumber:cucumber-java" }
+cucumber-junit = { module = "io.cucumber:cucumber-junit-platform-engine" }
+
+junit-dependencies = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-suite = { module = "org.junit.platform:junit-platform-suite" }
 
 
 [bundles]
-spring-webflux-websocket = ["spring-boot", "spring-autoconfigure", "spring-webflux", "spring-websocket"]
+spring-webflux-websocket = ["spring-webflux", "spring-websocket"]
+testing = ["cucumber", "cucumber-junit", "junit-suite"]
 
 
 [plugins]

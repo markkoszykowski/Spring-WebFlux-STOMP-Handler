@@ -1,4 +1,4 @@
-package org.github.stomp.server;
+package io.github.stomp;
 
 import io.netty.handler.codec.http.HttpUtil;
 import lombok.Builder;

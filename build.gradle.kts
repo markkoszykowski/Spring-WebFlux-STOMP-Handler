@@ -1,6 +1,6 @@
 plugins {
 	idea
-	java
+	`java-library`
 	checkstyle
 	libs.plugins.spring.boot
 }
@@ -34,4 +34,12 @@ dependencies {
 
 	implementation(libs.bundles.spring.webflux.websocket)
 	implementation(libs.agrona)
+
+	testImplementation(platform(libs.cucumber.dependencies))
+	testImplementation(platform(libs.junit.dependencies))
+	testImplementation(libs.bundles.testing)
+}
+
+tasks.test {
+	useJUnitPlatform()
 }

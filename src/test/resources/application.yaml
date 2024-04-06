@@ -6,3 +6,6 @@ logging:
   level:
     org.springframework: DEBUG
     org.github.stomp: TRACE
+
+server:
+  port: 8080

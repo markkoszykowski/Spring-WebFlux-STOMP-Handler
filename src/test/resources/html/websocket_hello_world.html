@@ -24,7 +24,10 @@
 	const rxStomp = new RxStomp();
 
 	rxStomp.configure({
-		webSocketFactory: () => new WebSocket('ws://localhost:8080/complex')
+		webSocketFactory: () => new WebSocket('ws://localhost:8080/hello-world'),
+		connectHeaders: {
+			"host": "localhost"
+		}
 	});
 
 	rxStomp.activate();
@@ -42,16 +45,11 @@
 		destination: "/topic/test-rx",
 		body: "First message to RxStomp",
 	});
-
-	setTimeout(async () => {
-		subscription.unsubscribe();
-		await rxStomp.deactivate();
-	}, 3000);
 </script>
 
 <body>
-	<div style="text-align: center;">
-		<p>Script courtesy of <a href="https://github.com/stomp-js/rx-stomp" target="_blank">RxStomp</a></p>
-		<a href="https://github.com/stomp-js/rx-stomp#browser" target="_blank">Source</a>
-	</div>
+<div style="text-align: center;">
+	<p>Script courtesy of <a href="https://github.com/stomp-js/rx-stomp" target="_blank">RxStomp</a></p>
+	<a href="https://github.com/stomp-js/rx-stomp#browser" target="_blank">Source</a>
+</div>
 </body>

@@ -1,4 +1,4 @@
-package org.github.stomp.server;
+package io.github.stomp;
 
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;

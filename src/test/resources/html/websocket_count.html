@@ -24,7 +24,7 @@
 	const rxStomp = new RxStomp();
 
 	rxStomp.configure({
-		webSocketFactory: () => new WebSocket('ws://localhost:8080/simple'),
+		webSocketFactory: () => new WebSocket('ws://localhost:8080/count'),
 		connectHeaders: {
 			"host": "localhost"
 		}
@@ -45,11 +45,6 @@
 		destination: "/topic/test-rx",
 		body: "First message to RxStomp",
 	});
-
-	setTimeout(async () => {
-		subscription.unsubscribe();
-		await rxStomp.deactivate();
-	}, 3000);
 </script>
 
 <body>

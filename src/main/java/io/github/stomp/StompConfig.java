@@ -1,4 +1,4 @@
-package org.github.stomp.server;
+package io.github.stomp;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

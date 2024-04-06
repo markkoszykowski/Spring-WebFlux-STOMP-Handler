@@ -1,4 +1,4 @@
-package org.github.stomp.server;
+package io.github.stomp;
 
 import org.springframework.http.MediaType;
 import org.springframework.messaging.simp.stomp.StompCommand;
