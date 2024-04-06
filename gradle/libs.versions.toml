@@ -1,0 +1,20 @@
+[versions]
+# https://plugins.gradle.org/plugin/org.springframework.boot
+spring = "3.2.4"
+
+
+[libraries]
+spring-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring" }
+lombok = { module = "org.projectlombok:lombok" }
+spring-boot = { module = "org.springframework.boot:spring-boot" }
+spring-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure" }
+spring-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
+spring-websocket = { module = "org.springframework.boot:spring-boot-starter-websocket" }
+
+
+[bundles]
+spring-webflux-websocket = ["spring-boot", "spring-autoconfigure", "spring-webflux", "spring-websocket"]
+
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring" }

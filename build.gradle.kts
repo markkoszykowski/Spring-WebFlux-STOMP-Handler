@@ -2,8 +2,7 @@ plugins {
 	idea
 	java
 	checkstyle
-	id("org.springframework.boot") version "3.2.4"
-	id("io.spring.dependency-management") version "1.1.4"
+	libs.plugins.spring.boot
 }
 
 idea {
@@ -27,13 +26,11 @@ repositories {
 }
 
 dependencies {
-	implementation("org.springframework.boot:spring-boot")
-	implementation("org.springframework.boot:spring-boot-autoconfigure")
-	implementation("org.springframework.boot:spring-boot-starter-webflux")
-	implementation("org.springframework.boot:spring-boot-starter-websocket")
+	annotationProcessor(platform(libs.spring.dependencies))
+	implementation(platform(libs.spring.dependencies))
 
-	implementation("io.projectreactor:reactor-core")
+	compileOnly(libs.lombok)
+	annotationProcessor(libs.lombok)
 
-	compileOnly("org.projectlombok:lombok")
-	annotationProcessor("org.projectlombok:lombok")
+	implementation(libs.bundles.spring.webflux.websocket)
 }
