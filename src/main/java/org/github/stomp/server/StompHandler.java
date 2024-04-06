@@ -13,7 +13,6 @@ import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -24,6 +23,8 @@ import java.util.stream.Collectors;
 
 @Slf4j
 final class StompHandler implements WebSocketHandler {
+
+	static final StompFrame PROTOCOL_TERMINATE = StompFrame.empty();
 
 	final StompServer server;
 
@@ -77,14 +78,12 @@ final class StompHandler implements WebSocketHandler {
 				.map(StompFrame::from)
 				.flatMap(inbound -> this.server.doOnEachInbound(session, inbound).thenReturn(inbound))
 				.takeUntil(inbound -> inbound.command == StompCommand.DISCONNECT)
-				.flatMap(inbound ->
-						this.handler(inbound.command)
-								.apply(this, session, inbound)
-								.flatMap(outbound -> this.handleError(session, inbound, outbound).thenReturn(outbound))
+				.flatMap(inbound -> this.handler(inbound.command)
+						.apply(this, session, inbound)
+						.flatMap(outbound -> this.handleError(session, inbound, outbound).thenReturn(outbound))
 				)
 				.takeUntil(outbound -> outbound.command == StompCommand.ERROR)
-				.doOnError(ex -> log.error("Error during WebSocket handling: {}", ex.getMessage()))
-				.doFinally(signalType -> session.close().subscribeOn(Schedulers.immediate()).subscribe());
+				.concatWithValues(PROTOCOL_TERMINATE);
 	}
 
 	@NonNull
@@ -93,9 +92,11 @@ final class StompHandler implements WebSocketHandler {
 		return session.send(
 				this.sessionReceiver(session)
 						.mergeWith(this.server.addWebSocketSources(session).flatMapMany(Flux::merge))
+						.takeWhile(outbound -> outbound != PROTOCOL_TERMINATE)
 						.doOnNext(outbound -> this.cacheMessageForAck(session, outbound))
 						.flatMap(outbound -> this.server.doOnEachOutbound(session, outbound).thenReturn(outbound))
 						.map(outbound -> outbound.toWebSocketMessage(session))
+						.doOnError(ex -> log.error("Error during WebSocket handling: {}", ex.getMessage()))
 		).then(Mono.defer(() -> {
 			final String sessionId = session.getId();
 			return this.server.doFinally(session, this.ackSubscriptionCache.remove(sessionId), this.ackFrameCache.remove(sessionId));
