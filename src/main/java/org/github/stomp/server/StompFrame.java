@@ -4,6 +4,7 @@ import io.netty.handler.codec.http.HttpUtil;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import org.agrona.ExpandableDirectByteBuffer;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -50,7 +51,7 @@ public class StompFrame {
 	final byte[] body;
 
 	String asString;
-	ByteBuffer asByteBuffer;
+	ExpandableDirectByteBuffer asByteBuffer;
 
 	@Builder
 	StompFrame(final StompCommand command, final MultiValueMap<String, String> headers, final Charset bodyCharset, final byte[] body) {
@@ -165,58 +166,83 @@ public class StompFrame {
 		return this.asString = sb.toString();
 	}
 
-	void putInBuffer(final byte[]... byteArrays) {
-		for (final byte[] byteArray : byteArrays) {
-			if (this.asByteBuffer.position() + byteArray.length > this.asByteBuffer.limit()) {
-				int newSize = this.asByteBuffer.limit() << 1;
-				if (newSize < this.asByteBuffer.limit()) {
-					newSize = this.asByteBuffer.limit() + byteArray.length;
-				}
-				if (newSize < this.asByteBuffer.limit()) {
-					throw new OutOfMemoryError();
-				}
-
-				final ByteBuffer temp = this.asByteBuffer.flip();
-				this.asByteBuffer = ByteBuffer.allocate(newSize);
-				this.asByteBuffer.put(temp);
-			}
-			this.asByteBuffer.put(byteArray);
-		}
+	int putInBuffer(final int index, final byte[] bytes) {
+		this.asByteBuffer.putBytes(index, bytes);
+		return index + bytes.length;
 	}
 
 	public ByteBuffer toByteBuffer() {
 		if (this.asByteBuffer != null) {
-			return this.asByteBuffer.asReadOnlyBuffer();
+			return this.asByteBuffer.byteBuffer().asReadOnlyBuffer();
 		}
 
-		this.asByteBuffer = ByteBuffer.allocate(this.capacityGuesstimate());
+		int index = 0;
+		this.asByteBuffer = new ExpandableDirectByteBuffer(this.capacityGuesstimate());
 
-		this.putInBuffer(this.command.name().getBytes(DEFAULT_CHARSET), EOL_BYTES);
+		index = this.putInBuffer(index, commandBytes(this.command));
+		index = this.putInBuffer(index, EOL_BYTES);
 
 		for (final Map.Entry<String, List<String>> entry : this.headers.entrySet()) {
-			final byte[] key = entry.getKey().getBytes(DEFAULT_CHARSET);
+			index = this.putInBuffer(index, entry.getKey().getBytes(DEFAULT_CHARSET));
 			for (final String value : entry.getValue()) {
-				this.putInBuffer(key, HEADER_SEPARATOR_BYTES);
+				index = this.putInBuffer(index, HEADER_SEPARATOR_BYTES);
 				if (value != null) {
-					this.putInBuffer(value.getBytes(DEFAULT_CHARSET));
+					this.putInBuffer(index, value.getBytes(DEFAULT_CHARSET));
 				}
-				this.putInBuffer(EOL_BYTES);
+				index = this.putInBuffer(index, EOL_BYTES);
 			}
 		}
 
-		this.putInBuffer(EOL_BYTES);
+		index = this.putInBuffer(index, EOL_BYTES);
 
 		if (this.body != null) {
-			this.putInBuffer(this.body);
+			index = this.putInBuffer(index, this.body);
 		}
 
-		this.putInBuffer(NULL_BYTES);
+		index = this.putInBuffer(index, NULL_BYTES);
+		this.asByteBuffer.byteBuffer().clear().position(0).limit(index);
 
-		return this.asByteBuffer.flip().asReadOnlyBuffer();
+		return this.asByteBuffer.byteBuffer().asReadOnlyBuffer();
 	}
 
 	public WebSocketMessage toWebSocketMessage(final WebSocketSession session) {
 		return new WebSocketMessage(WebSocketMessage.Type.TEXT, session.bufferFactory().wrap(this.toByteBuffer()));
+	}
+
+	static final byte[] STOMP_BYTES = StompCommand.STOMP.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] CONNECT_BYTES = StompCommand.CONNECT.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] DISCONNECT_BYTES = StompCommand.DISCONNECT.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] SUBSCRIBE_BYTES = StompCommand.SUBSCRIBE.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] UNSUBSCRIBE_BYTES = StompCommand.UNSUBSCRIBE.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] SEND_BYTES = StompCommand.SEND.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] ACK_BYTES = StompCommand.ACK.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] NACK_BYTES = StompCommand.NACK.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] BEGIN_BYTES = StompCommand.BEGIN.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] COMMIT_BYTES = StompCommand.COMMIT.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] ABORT_BYTES = StompCommand.ABORT.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] CONNECTED_BYTES = StompCommand.CONNECTED.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] RECEIPT_BYTES = StompCommand.RECEIPT.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] MESSAGE_BYTES = StompCommand.MESSAGE.name().getBytes(DEFAULT_CHARSET);
+	static final byte[] ERROR_BYTES = StompCommand.ERROR.name().getBytes(DEFAULT_CHARSET);
+
+	static byte[] commandBytes(final StompCommand command) {
+		return switch (command) {
+			case StompCommand.STOMP -> STOMP_BYTES;
+			case StompCommand.CONNECT -> CONNECT_BYTES;
+			case StompCommand.DISCONNECT -> DISCONNECT_BYTES;
+			case StompCommand.SUBSCRIBE -> SUBSCRIBE_BYTES;
+			case StompCommand.UNSUBSCRIBE -> UNSUBSCRIBE_BYTES;
+			case StompCommand.SEND -> SEND_BYTES;
+			case StompCommand.ACK -> ACK_BYTES;
+			case StompCommand.NACK -> NACK_BYTES;
+			case StompCommand.BEGIN -> BEGIN_BYTES;
+			case StompCommand.COMMIT -> COMMIT_BYTES;
+			case StompCommand.ABORT -> ABORT_BYTES;
+			case StompCommand.CONNECTED -> CONNECTED_BYTES;
+			case StompCommand.RECEIPT -> RECEIPT_BYTES;
+			case StompCommand.MESSAGE -> MESSAGE_BYTES;
+			case StompCommand.ERROR -> ERROR_BYTES;
+		};
 	}
 
 }

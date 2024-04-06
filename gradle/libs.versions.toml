@@ -1,6 +1,7 @@
 [versions]
 # https://plugins.gradle.org/plugin/org.springframework.boot
 spring = "3.2.4"
+agrona = "1.21.1"
 
 
 [libraries]
@@ -10,6 +11,7 @@ spring-boot = { module = "org.springframework.boot:spring-boot" }
 spring-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure" }
 spring-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
 spring-websocket = { module = "org.springframework.boot:spring-boot-starter-websocket" }
+agrona = { module = "org.agrona:agrona", version.ref = "agrona" }
 
 
 [bundles]

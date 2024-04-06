@@ -33,4 +33,5 @@ dependencies {
 	annotationProcessor(libs.lombok)
 
 	implementation(libs.bundles.spring.webflux.websocket)
+	implementation(libs.agrona)
 }
