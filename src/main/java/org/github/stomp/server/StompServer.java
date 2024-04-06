@@ -7,7 +7,7 @@ import reactor.util.function.Tuple2;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Queue;
 
 public interface StompServer {
 
@@ -106,7 +106,7 @@ public interface StompServer {
 	 * @see StompServer#onDisconnect(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 * @see StompServer#onError(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<Void> doFinally(final WebSocketSession session, final Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
+	default Mono<Void> doFinally(final WebSocketSession session, final Map<String, Tuple2<AckMode, Queue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
 		return Mono.empty();
 	}
 
@@ -260,7 +260,7 @@ public interface StompServer {
 	 * @see StompServer#doFinally(WebSocketSession, Map, Map)
 	 * @see StompServer#onError(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<StompFrame> onDisconnect(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
+	default Mono<StompFrame> onDisconnect(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Map<String, Tuple2<AckMode, Queue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
 		return Mono.justOrEmpty(outbound);
 	}
 
@@ -277,7 +277,7 @@ public interface StompServer {
 	 * @see StompServer#doFinally(WebSocketSession, Map, Map)
 	 * @see StompServer#onDisconnect(WebSocketSession, StompFrame, StompFrame, Map, Map)
 	 */
-	default Mono<Void> onError(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Map<String, Tuple2<AckMode, ConcurrentLinkedQueue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
+	default Mono<Void> onError(final WebSocketSession session, final StompFrame inbound, final StompFrame outbound, final Map<String, Tuple2<AckMode, Queue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
 		return Mono.empty();
 	}
 
