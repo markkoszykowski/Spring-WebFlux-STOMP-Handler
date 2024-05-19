@@ -52,7 +52,7 @@ public interface StompServer {
 			if (ackMode == null) {
 				return null;
 			}
-			for (AckMode mode : AckMode.values()) {
+			for (final AckMode mode : AckMode.values()) {
 				if (mode.ackMode.equalsIgnoreCase(ackMode)) {
 					return mode;
 				}
