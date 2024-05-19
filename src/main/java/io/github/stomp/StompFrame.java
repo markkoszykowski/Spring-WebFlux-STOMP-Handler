@@ -155,13 +155,15 @@ public class StompFrame {
 
 		sb.append(this.command.name()).append(EOL);
 
-		this.headers.forEach((key, valueList) -> valueList.forEach(value -> {
-			sb.append(key).append(HEADER_SEPARATOR);
-			if (value != null) {
-				sb.append(value);
+		for (final Map.Entry<String, List<String>> entry : this.headers.entrySet()) {
+			for (final String value : entry.getValue()) {
+				sb.append(entry.getKey()).append(HEADER_SEPARATOR);
+				if (value != null) {
+					sb.append(value);
+				}
+				sb.append(EOL);
 			}
-			sb.append(EOL);
-		}));
+		}
 
 		sb.append(EOL);
 
@@ -197,8 +199,9 @@ public class StompFrame {
 		index = this.putInBuffer(index, EOL_BYTES);
 
 		for (final Map.Entry<String, List<String>> entry : this.headers.entrySet()) {
-			index = this.putInBuffer(index, entry.getKey().getBytes(DEFAULT_CHARSET));
+			final byte[] key = entry.getKey().getBytes(DEFAULT_CHARSET);
 			for (final String value : entry.getValue()) {
+				index = this.putInBuffer(index, key);
 				index = this.putInBuffer(index, HEADER_SEPARATOR_BYTES);
 				if (value != null) {
 					index = this.putInBuffer(index, value.getBytes(DEFAULT_CHARSET));
