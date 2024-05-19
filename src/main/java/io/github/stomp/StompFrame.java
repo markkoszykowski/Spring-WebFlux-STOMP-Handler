@@ -171,7 +171,7 @@ public class StompFrame {
 			if (this.bodyCharset != null) {
 				sb.append(new String(this.body, this.bodyCharset));
 			} else {
-				for (byte b : this.body) {
+				for (final byte b : this.body) {
 					sb.append(Integer.toBinaryString(b & 255 | 256).substring(1));
 				}
 			}
