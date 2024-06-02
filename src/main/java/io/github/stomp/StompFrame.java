@@ -53,16 +53,6 @@ public class StompFrame {
 	String asString;
 	ExpandableDirectByteBuffer asByteBuffer;
 
-	private StompFrame() {
-		this.command = null;
-		this.headers = null;
-		this.bodyCharset = null;
-		this.body = null;
-
-		this.asString = null;
-		this.asByteBuffer = null;
-	}
-
 	@Builder
 	StompFrame(final StompCommand command, final MultiValueMap<String, String> headers, final Charset bodyCharset, final byte[] body) {
 		Assert.notNull(command, "'command' must not be null");
@@ -102,10 +92,6 @@ public class StompFrame {
 
 		this.asString = null;
 		this.asByteBuffer = null;
-	}
-
-	static StompFrame empty() {
-		return new StompFrame();
 	}
 
 	public static StompFrame from(final WebSocketMessage socketMessage) {

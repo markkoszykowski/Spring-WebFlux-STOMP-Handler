@@ -1,7 +1,7 @@
 package io.github.stomp;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.util.Assert;
@@ -21,8 +21,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 final class StompHandler implements WebSocketHandler {
-
-	static final StompFrame PROTOCOL_TERMINATE = StompFrame.empty();
 
 	final StompServer server;
 
@@ -80,17 +78,16 @@ final class StompHandler implements WebSocketHandler {
 						.apply(this, session, inbound)
 						.flatMap(outbound -> this.handleError(session, inbound, outbound).thenReturn(outbound))
 				)
-				.takeUntil(outbound -> outbound.command == StompCommand.ERROR)
-				.concatWithValues(PROTOCOL_TERMINATE);
+				.takeUntil(outbound -> outbound.command == StompCommand.ERROR);
 	}
 
 	@NonNull
 	@Override
-	public Mono<Void> handle(final WebSocketSession session) {
+	public Mono<Void> handle(@NonNull final WebSocketSession session) {
+		final Flux<StompFrame> receiver = this.sessionReceiver(session);
 		return session.send(
-				this.sessionReceiver(session)
-						.mergeWith(this.server.addWebSocketSources(session).flatMapMany(Flux::merge))
-						.takeWhile(outbound -> outbound != PROTOCOL_TERMINATE)
+				receiver.mergeWith(this.server.addWebSocketSources(session).flatMapMany(Flux::merge))
+						.takeUntilOther(receiver.ignoreElements())
 						.doOnNext(outbound -> this.cacheMessageForAck(session, outbound))
 						.flatMap(outbound -> this.server.doOnEachOutbound(session, outbound).thenReturn(outbound))
 						.map(outbound -> outbound.toWebSocketMessage(session))
