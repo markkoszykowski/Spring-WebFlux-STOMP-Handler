@@ -86,16 +86,18 @@ final class StompHandler implements WebSocketHandler {
 	public Mono<Void> handle(@NonNull final WebSocketSession session) {
 		final Flux<StompFrame> receiver = this.sessionReceiver(session);
 		return session.send(
-				receiver.mergeWith(this.server.addWebSocketSources(session).flatMapMany(Flux::merge))
-						.takeUntilOther(receiver.ignoreElements())
-						.doOnNext(outbound -> this.cacheMessageForAck(session, outbound))
-						.flatMap(outbound -> this.server.doOnEachOutbound(session, outbound).thenReturn(outbound))
-						.map(outbound -> outbound.toWebSocketMessage(session))
-						.doOnError(ex -> log.error("Error during WebSocket handling: {}", ex.getMessage()))
-		).then(Mono.defer(() -> {
-			final String sessionId = session.getId();
-			return this.server.doFinally(session, this.ackSubscriptionCache.remove(sessionId), this.ackFrameCache.remove(sessionId));
-		}));
+						receiver.mergeWith(this.server.addWebSocketSources(session).flatMapMany(Flux::merge))
+								.takeUntilOther(receiver.ignoreElements())
+								.doOnNext(outbound -> this.cacheMessageForAck(session, outbound))
+								.flatMap(outbound -> this.server.doOnEachOutbound(session, outbound).thenReturn(outbound))
+								.map(outbound -> outbound.toWebSocketMessage(session))
+								.doOnError(ex -> log.error("Error during WebSocket receiving: {}", ex.getMessage()))
+				)
+				.doOnError(ex -> log.error("Error during WebSocket sending: {}", ex.getMessage()))
+				.then(Mono.defer(() -> {
+					final String sessionId = session.getId();
+					return this.server.doFinally(session, this.ackSubscriptionCache.remove(sessionId), this.ackFrameCache.remove(sessionId));
+				}));
 	}
 
 	Mono<StompFrame> handleProtocolNegotiation(final WebSocketSession session, final StompFrame inbound, final HexFunction<StompServer, WebSocketSession, StompFrame, StompFrame, StompServer.Version, String, Mono<StompFrame>> callback) {
