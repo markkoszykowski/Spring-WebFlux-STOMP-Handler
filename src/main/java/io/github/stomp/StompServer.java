@@ -1,7 +1,7 @@
 package io.github.stomp;
 
+import org.reactivestreams.Publisher;
 import org.springframework.web.reactive.socket.WebSocketSession;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
@@ -72,7 +72,7 @@ public interface StompServer {
 	 * @param session The session to add frame sources to.
 	 * @return The list of sources to propagate frames.
 	 */
-	default Mono<List<Flux<StompFrame>>> addWebSocketSources(final WebSocketSession session) {
+	default Mono<? extends Iterable<? extends Publisher<StompFrame>>> addWebSocketSources(final WebSocketSession session) {
 		return Mono.empty();
 	}
 
