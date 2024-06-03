@@ -80,7 +80,7 @@ public class StompFrame {
 		this.command = parseCommand(accessor);
 		this.headers = parseHeaders(accessor);
 		this.bodyCharset = parseBodyCharset(accessor);
-		this.body = parseBody(accessor, message);
+		this.body = parseBody(message, accessor);
 
 		this.asString = null;
 		this.asByteBuffer = null;
@@ -131,7 +131,7 @@ public class StompFrame {
 		return contentType != null ? contentType.getCharset() : null;
 	}
 
-	static byte[] parseBody(final StompHeaderAccessor accessor, final Message<byte[]> message) {
+	static byte[] parseBody(final Message<byte[]> message, final StompHeaderAccessor accessor) {
 		final Integer contentLength = accessor.getContentLength();
 		final byte[] temp = message.getPayload();
 		if (contentLength != null) {
