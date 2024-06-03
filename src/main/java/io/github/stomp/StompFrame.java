@@ -1,6 +1,5 @@
 package io.github.stomp;
 
-import io.netty.handler.codec.http.HttpUtil;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -13,6 +12,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.NativeMessageHeaderAccessor;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.MimeType;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
@@ -20,10 +20,7 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class StompFrame {
 
@@ -77,14 +74,18 @@ public class StompFrame {
 		final Message<byte[]> message = DECODER.decode(byteBuffer).getFirst();
 		final StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
-		this.command = accessor.getCommand();
-		this.headers = getHeaders(accessor);
-		this.bodyCharset = HttpUtil.getCharset(this.headers.getFirst(StompHeaderAccessor.STOMP_CONTENT_TYPE_HEADER), null);
+		final StompCommand c = accessor.getCommand();
+		Assert.notNull(c, "'command' must not be null");
+		this.command = c;
 
+		this.headers = getHeaders(accessor);
+
+		final MimeType contentType = accessor.getContentType();
+		this.bodyCharset = contentType != null ? contentType.getCharset() : null;
+
+		final Integer contentLength = accessor.getContentLength();
 		final byte[] temp = message.getPayload();
-		final String contentLengthHeader = this.headers.getFirst(StompHeaderAccessor.STOMP_CONTENT_LENGTH_HEADER);
-		if (contentLengthHeader != null) {
-			final int contentLength = Integer.parseUnsignedInt(contentLengthHeader);
+		if (contentLength != null) {
 			this.body = contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
 		} else {
 			this.body = temp;
