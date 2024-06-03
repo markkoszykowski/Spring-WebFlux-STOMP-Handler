@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 public class StompFrame {
 
@@ -223,8 +224,8 @@ public class StompFrame {
 		return this.asByteBuffer.byteBuffer().asReadOnlyBuffer();
 	}
 
-	WebSocketMessage toWebSocketMessage(final WebSocketSession session) {
-		return new WebSocketMessage(WebSocketMessage.Type.TEXT, session.bufferFactory().wrap(this.toByteBuffer()));
+	static Function<StompFrame, WebSocketMessage> toWebSocketMessage(final WebSocketSession session) {
+		return frame -> new WebSocketMessage(WebSocketMessage.Type.TEXT, session.bufferFactory().wrap(frame.toByteBuffer()));
 	}
 
 	static final byte[] STOMP_BYTES = StompCommand.STOMP.name().getBytes(DEFAULT_CHARSET);

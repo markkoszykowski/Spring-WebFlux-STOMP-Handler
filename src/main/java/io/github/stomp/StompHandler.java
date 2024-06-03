@@ -17,6 +17,8 @@ import reactor.util.function.Tuples;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -69,15 +71,18 @@ final class StompHandler implements WebSocketHandler {
 		};
 	}
 
+	Function<StompFrame, Mono<StompFrame>> handler(final WebSocketSession session) {
+		return inbound -> this.handler(inbound.command)
+				.apply(this, session, inbound)
+				.flatMap(outbound -> this.handleError(session, inbound, outbound).thenReturn(outbound));
+	}
+
 	Flux<StompFrame> sessionReceiver(final WebSocketSession session) {
 		return session.receive()
 				.map(StompFrame::from)
-				.flatMap(inbound -> this.server.doOnEachInbound(session, inbound).thenReturn(inbound))
+				.flatMap(this.doOnEach(session, StompServer::doOnEachInbound))
 				.takeUntil(inbound -> inbound.command == StompCommand.DISCONNECT)
-				.flatMap(inbound -> this.handler(inbound.command)
-						.apply(this, session, inbound)
-						.flatMap(outbound -> this.handleError(session, inbound, outbound).thenReturn(outbound))
-				)
+				.flatMap(this.handler(session))
 				.takeUntil(outbound -> outbound.command == StompCommand.ERROR);
 	}
 
@@ -88,9 +93,9 @@ final class StompHandler implements WebSocketHandler {
 		return session.send(
 						receiver.mergeWith(this.server.addWebSocketSources(session).flatMapMany(Flux::merge))
 								.takeUntilOther(receiver.ignoreElements())
-								.doOnNext(outbound -> this.cacheMessageForAck(session, outbound))
-								.flatMap(outbound -> this.server.doOnEachOutbound(session, outbound).thenReturn(outbound))
-								.map(outbound -> outbound.toWebSocketMessage(session))
+								.doOnNext(this.cacheMessageForAck(session))
+								.flatMap(this.doOnEach(session, StompServer::doOnEachOutbound))
+								.map(StompFrame.toWebSocketMessage(session))
 								.doOnError(ex -> log.error("Error during WebSocket receiving: {}", ex.getMessage()))
 				)
 				.doOnError(ex -> log.error("Error during WebSocket sending: {}", ex.getMessage()))
@@ -98,6 +103,10 @@ final class StompHandler implements WebSocketHandler {
 					final String sessionId = session.getId();
 					return this.server.doFinally(session, this.ackSubscriptionCache.remove(sessionId), this.ackFrameCache.remove(sessionId));
 				}));
+	}
+
+	Function<StompFrame, Mono<StompFrame>> doOnEach(final WebSocketSession session, final TriFunction<StompServer, WebSocketSession, StompFrame, Mono<Void>> doOnEach) {
+		return frame -> doOnEach.apply(this.server, session, frame).thenReturn(frame);
 	}
 
 	Mono<StompFrame> handleProtocolNegotiation(final WebSocketSession session, final StompFrame inbound, final HexFunction<StompServer, WebSocketSession, StompFrame, StompFrame, StompServer.Version, String, Mono<StompFrame>> callback) {
@@ -286,30 +295,32 @@ final class StompHandler implements WebSocketHandler {
 		return this.server.onError(session, inbound, outbound, this.ackSubscriptionCache.remove(sessionId), this.ackFrameCache.remove(sessionId));
 	}
 
-	void cacheMessageForAck(final WebSocketSession session, final StompFrame outbound) {
-		if (outbound.command != StompCommand.MESSAGE) {
-			return;
-		}
+	Consumer<StompFrame> cacheMessageForAck(final WebSocketSession session) {
+		return outbound -> {
+			if (outbound.command != StompCommand.MESSAGE) {
+				return;
+			}
 
-		final String sessionId = session.getId();
-		final String subscription = outbound.headers.getFirst(StompHeaders.SUBSCRIPTION);
-		Assert.notNull(subscription, "Trying to send MESSAGE without subscription");
+			final String sessionId = session.getId();
+			final String subscription = outbound.headers.getFirst(StompHeaders.SUBSCRIPTION);
+			Assert.notNull(subscription, "Trying to send MESSAGE without subscription");
 
-		final Map<String, Tuple2<StompServer.AckMode, Queue<String>>> subscriptionCache = this.ackSubscriptionCache.get(sessionId);
-		if (subscriptionCache == null) {
-			return;
-		}
+			final Map<String, Tuple2<StompServer.AckMode, Queue<String>>> subscriptionCache = this.ackSubscriptionCache.get(sessionId);
+			if (subscriptionCache == null) {
+				return;
+			}
 
-		final Tuple2<StompServer.AckMode, Queue<String>> subscriptionInfo = subscriptionCache.get(subscription);
-		if (subscriptionInfo == null || subscriptionInfo.getT1() == StompServer.AckMode.AUTO) {
-			return;
-		}
+			final Tuple2<StompServer.AckMode, Queue<String>> subscriptionInfo = subscriptionCache.get(subscription);
+			if (subscriptionInfo == null || subscriptionInfo.getT1() == StompServer.AckMode.AUTO) {
+				return;
+			}
 
-		final String ackId = UUID.randomUUID().toString();
-		subscriptionInfo.getT2().add(ackId);
-		this.ackFrameCache.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>()).put(ackId, outbound);
+			final String ackId = UUID.randomUUID().toString();
+			subscriptionInfo.getT2().add(ackId);
+			this.ackFrameCache.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>()).put(ackId, outbound);
 
-		outbound.headers.add(StompHeaders.ACK, ackId);
+			outbound.headers.add(StompHeaders.ACK, ackId);
+		};
 	}
 
 	@FunctionalInterface
