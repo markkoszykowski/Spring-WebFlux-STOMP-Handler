@@ -84,7 +84,7 @@ final class StompHandler implements WebSocketHandler {
 	@NonNull
 	@Override
 	public Mono<Void> handle(@NonNull final WebSocketSession session) {
-		final Flux<StompFrame> receiver = this.sessionReceiver(session);
+		final Flux<StompFrame> receiver = this.sessionReceiver(session).cache();
 		return session.send(
 						receiver.mergeWith(this.server.addWebSocketSources(session).flatMapMany(Flux::merge))
 								.takeUntilOther(receiver.ignoreElements())
