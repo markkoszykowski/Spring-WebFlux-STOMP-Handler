@@ -28,11 +28,11 @@ public class StompUtils {
 		return map != null ? CollectionUtils.toMultiValueMap(map) : null;
 	}
 
-	static String getContentLength(final byte[] body) {
+	static String contentLength(final byte[] body) {
 		return body != null ? String.valueOf(body.length) : "0";
 	}
 
-	static String getContentType(final MimeType contentType) {
+	static String contentType(final MimeType contentType) {
 		return contentType != null ? contentType.toString() : null;
 	}
 
@@ -85,9 +85,9 @@ public class StompUtils {
 		headers.add(StompHeaders.DESTINATION, destination);
 		headers.add(StompHeaders.SUBSCRIPTION, subscription);
 		headers.add(StompHeaders.MESSAGE_ID, UUID.randomUUID().toString());
-		headers.add(StompHeaders.CONTENT_LENGTH, getContentLength(body));
+		headers.add(StompHeaders.CONTENT_LENGTH, contentLength(body));
 
-		final String contentTypeString = getContentType(contentType);
+		final String contentTypeString = contentType(contentType);
 		if (contentTypeString != null) {
 			headers.add(StompHeaders.CONTENT_TYPE, contentTypeString);
 		}
@@ -170,9 +170,9 @@ public class StompUtils {
 
 		final MultiValueMap<String, String> headers = CollectionUtils.toMultiValueMap(new HashMap<>());
 		headers.add(MESSAGE, errorHeader);
-		headers.add(StompHeaders.CONTENT_LENGTH, getContentLength(body));
+		headers.add(StompHeaders.CONTENT_LENGTH, contentLength(body));
 
-		final String contentTypeString = getContentType(contentType);
+		final String contentTypeString = contentType(contentType);
 		if (contentTypeString != null) {
 			headers.add(StompHeaders.CONTENT_TYPE, contentTypeString);
 		}

@@ -20,7 +20,10 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class StompFrame {
 
@@ -74,22 +77,10 @@ public class StompFrame {
 		final Message<byte[]> message = DECODER.decode(byteBuffer).getFirst();
 		final StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
-		final StompCommand c = accessor.getCommand();
-		Assert.notNull(c, "'command' must not be null");
-		this.command = c;
-
-		this.headers = getHeaders(accessor);
-
-		final MimeType contentType = accessor.getContentType();
-		this.bodyCharset = contentType != null ? contentType.getCharset() : null;
-
-		final Integer contentLength = accessor.getContentLength();
-		final byte[] temp = message.getPayload();
-		if (contentLength != null) {
-			this.body = contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
-		} else {
-			this.body = temp;
-		}
+		this.command = parseCommand(accessor);
+		this.headers = parseHeaders(accessor);
+		this.bodyCharset = parseBodyCharset(accessor);
+		this.body = parseBody(accessor, message);
 
 		this.asString = null;
 		this.asByteBuffer = null;
@@ -122,11 +113,34 @@ public class StompFrame {
 				.body(this.body);
 	}
 
+
+	static StompCommand parseCommand(final StompHeaderAccessor accessor) {
+		final StompCommand command = accessor.getCommand();
+		Assert.notNull(command, "'command' must not be null");
+		return command;
+	}
+
 	@SuppressWarnings(value = {"unchecked"})
-	static MultiValueMap<String, String> getHeaders(final StompHeaderAccessor accessor) {
+	static MultiValueMap<String, String> parseHeaders(final StompHeaderAccessor accessor) {
 		final Map<String, List<String>> headers = (Map<String, List<String>>) accessor.getHeader(NativeMessageHeaderAccessor.NATIVE_HEADERS);
 		return CollectionUtils.toMultiValueMap(headers != null ? headers : Collections.emptyMap());
 	}
+
+	static Charset parseBodyCharset(final StompHeaderAccessor accessor) {
+		final MimeType contentType = accessor.getContentType();
+		return contentType != null ? contentType.getCharset() : null;
+	}
+
+	static byte[] parseBody(final StompHeaderAccessor accessor, final Message<byte[]> message) {
+		final Integer contentLength = accessor.getContentLength();
+		final byte[] temp = message.getPayload();
+		if (contentLength != null) {
+			return contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
+		} else {
+			return temp;
+		}
+	}
+
 
 	int capacityGuesstimate() {
 		return this.command.name().length() + (64 * this.headers.size()) + (this.body != null ? this.body.length : 0) + 4;
