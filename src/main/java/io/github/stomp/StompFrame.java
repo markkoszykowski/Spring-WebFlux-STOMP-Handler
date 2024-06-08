@@ -39,7 +39,7 @@ public class StompFrame {
 	static final byte[] EOL_BYTES = EOL.getBytes(DEFAULT_CHARSET);
 	static final byte[] HEADER_SEPARATOR_BYTES = HEADER_SEPARATOR.getBytes(DEFAULT_CHARSET);
 
-	static final StompDecoder DECODER = new StompDecoder();
+	static final ThreadLocal<StompDecoder> DECODER = ThreadLocal.withInitial(StompDecoder::new);
 
 	@Getter
 	@Accessors(fluent = true)
@@ -75,7 +75,7 @@ public class StompFrame {
 		final ByteBuffer byteBuffer = ByteBuffer.allocate(dataBuffer.readableByteCount());
 		dataBuffer.toByteBuffer(byteBuffer);
 
-		final Message<byte[]> message = DECODER.decode(byteBuffer).getFirst();
+		final Message<byte[]> message = DECODER.get().decode(byteBuffer).getFirst();
 		final StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
 		this.command = parseCommand(accessor);
