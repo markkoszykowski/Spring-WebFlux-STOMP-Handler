@@ -41,6 +41,14 @@ public class StompFrame {
 
 	static final ThreadLocal<StompDecoder> DECODER = ThreadLocal.withInitial(StompDecoder::new);
 
+	static final byte[][] COMMAND_BYTES = new byte[StompCommand.values().length][];
+
+	static {
+		for (final StompCommand command : StompCommand.values()) {
+			COMMAND_BYTES[command.ordinal()] = command.name().getBytes(DEFAULT_CHARSET);
+		}
+	}
+
 	@Getter
 	@Accessors(fluent = true)
 	final StompCommand command;
@@ -197,7 +205,7 @@ public class StompFrame {
 		int index = 0;
 		this.asByteBuffer = new ExpandableDirectByteBuffer(this.capacityGuesstimate());
 
-		index = this.putInBuffer(index, commandBytes(this.command));
+		index = this.putInBuffer(index, COMMAND_BYTES[this.command.ordinal()]);
 		index = this.putInBuffer(index, EOL_BYTES);
 
 		for (final Map.Entry<String, List<String>> entry : this.headers.entrySet()) {
@@ -226,42 +234,6 @@ public class StompFrame {
 
 	static Function<StompFrame, WebSocketMessage> toWebSocketMessage(final WebSocketSession session) {
 		return frame -> new WebSocketMessage(WebSocketMessage.Type.TEXT, session.bufferFactory().wrap(frame.toByteBuffer()));
-	}
-
-	static final byte[] STOMP_BYTES = StompCommand.STOMP.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] CONNECT_BYTES = StompCommand.CONNECT.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] DISCONNECT_BYTES = StompCommand.DISCONNECT.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] SUBSCRIBE_BYTES = StompCommand.SUBSCRIBE.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] UNSUBSCRIBE_BYTES = StompCommand.UNSUBSCRIBE.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] SEND_BYTES = StompCommand.SEND.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] ACK_BYTES = StompCommand.ACK.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] NACK_BYTES = StompCommand.NACK.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] BEGIN_BYTES = StompCommand.BEGIN.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] COMMIT_BYTES = StompCommand.COMMIT.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] ABORT_BYTES = StompCommand.ABORT.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] CONNECTED_BYTES = StompCommand.CONNECTED.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] RECEIPT_BYTES = StompCommand.RECEIPT.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] MESSAGE_BYTES = StompCommand.MESSAGE.name().getBytes(DEFAULT_CHARSET);
-	static final byte[] ERROR_BYTES = StompCommand.ERROR.name().getBytes(DEFAULT_CHARSET);
-
-	static byte[] commandBytes(final StompCommand command) {
-		return switch (command) {
-			case StompCommand.STOMP -> STOMP_BYTES;
-			case StompCommand.CONNECT -> CONNECT_BYTES;
-			case StompCommand.DISCONNECT -> DISCONNECT_BYTES;
-			case StompCommand.SUBSCRIBE -> SUBSCRIBE_BYTES;
-			case StompCommand.UNSUBSCRIBE -> UNSUBSCRIBE_BYTES;
-			case StompCommand.SEND -> SEND_BYTES;
-			case StompCommand.ACK -> ACK_BYTES;
-			case StompCommand.NACK -> NACK_BYTES;
-			case StompCommand.BEGIN -> BEGIN_BYTES;
-			case StompCommand.COMMIT -> COMMIT_BYTES;
-			case StompCommand.ABORT -> ABORT_BYTES;
-			case StompCommand.CONNECTED -> CONNECTED_BYTES;
-			case StompCommand.RECEIPT -> RECEIPT_BYTES;
-			case StompCommand.MESSAGE -> MESSAGE_BYTES;
-			case StompCommand.ERROR -> ERROR_BYTES;
-		};
 	}
 
 }
