@@ -38,32 +38,41 @@
 			<property name="allowInSwitchCase" value="true"/>
 		</module>
 		<module name="EmptyBlock">
-			<property name="tokens" value="LITERAL_FINALLY,LITERAL_IF,LITERAL_ELSE,INSTANCE_INIT,STATIC_INIT,LITERAL_SWITCH"/>
+			<property name="tokens" value="LITERAL_TRY,LITERAL_FINALLY,LITERAL_IF,LITERAL_ELSE,INSTANCE_INIT,STATIC_INIT,LITERAL_SWITCH,LITERAL_SYNCHRONIZED,LITERAL_CASE,LITERAL_DEFAULT,ARRAY_INIT"/>
 		</module>
-		<module name="LeftCurly"/>
-		<module name="NeedBraces"/>
+		<module name="LeftCurly">
+			<property name="ignoreEnums" value="false"/>
+		</module>
+		<module name="NeedBraces">
+			<property name="allowEmptyLoopBody" value="true"/>
+		</module>
 		<module name="RightCurly"/>
 
 
 		<!-- See https://checkstyle.org/checks/design/index.html -->
+		<module name="HideUtilityClassConstructor"/>
+		<module name="InnerTypeLast"/>
 		<module name="InterfaceIsType"/>
 		<module name="MutableException"/>
 		<module name="OneTopLevelClass"/>
 
 
 		<!-- See https://checkstyle.org/checks/coding/index.html -->
+		<module name="AvoidDoubleBraceInitialization"/>
+		<module name="ConstructorsDeclarationGrouping"/>
+		<module name="DefaultComesLast"/>
 		<module name="EmptyStatement"/>
 		<module name="EqualsAvoidNull"/>
 		<module name="EqualsHashCode"/>
-		<module name="FinalLocalVariable"/>
-		<module name="HiddenField">
-			<property name="tokens" value="VARIABLE_DEF,PATTERN_VARIABLE_DEF,LAMBDA,RECORD_COMPONENT_DEF"/>
+		<module name="FinalLocalVariable">
+			<property name="validateEnhancedForLoopVariable" value="true"/>
+			<property name="tokens" value="VARIABLE_DEF,PARAMETER_DEF"/>
 		</module>
 		<module name="IllegalInstantiation"/>
 		<module name="NoArrayTrailingComma"/>
 		<module name="NoEnumTrailingComma"/>
-		<module name="OverloadMethodsDeclarationOrder"/>
 		<module name="PackageDeclaration"/>
+		<module name="ParameterAssignment"/>
 		<module name="RequireThis">
 			<property name="validateOnlyOverlapping" value="false"/>
 		</module>
@@ -85,8 +94,9 @@
 
 		<!-- See https://checkstyle.org/checks/misc/index.html -->
 		<module name="ArrayTypeStyle"/>
+		<module name="CommentsIndentation"/>
 		<module name="FinalParameters">
-			<property name="ignorePrimitiveTypes" value="true"/>
+			<property name="tokens" value="METHOD_DEF,CTOR_DEF,LITERAL_CATCH,FOR_EACH_CLAUSE"/>
 		</module>
 		<module name="OuterTypeFilename"/>
 		<module name="UpperEll"/>
@@ -99,6 +109,9 @@
 
 		<!-- See https://checkstyle.org/checks/naming/index.html -->
 		<module name="AbbreviationAsWordInName"/>
+		<module name="CatchParameterName">
+			<property name="format" value="^ex$"/>
+		</module>
 		<module name="ClassTypeParameterName">
 			<property name="format" value="^[A-Z][a-zA-Z0-9]*$"/>
 		</module>

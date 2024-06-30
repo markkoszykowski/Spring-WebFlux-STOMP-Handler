@@ -15,6 +15,9 @@ import java.util.UUID;
 
 public class StompUtils {
 
+	private StompUtils() {
+	}
+
 	// Header Keys
 	public static final String MESSAGE = "message";
 	public static final String TRANSACTION = "transaction";

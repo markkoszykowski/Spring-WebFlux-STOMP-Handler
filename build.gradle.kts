@@ -18,6 +18,11 @@ java {
 	}
 }
 
+// https://checkstyle.org/releasenotes.html
+checkstyle {
+	toolVersion = "10.17.0"
+}
+
 group = "com.github.stomp"
 version = "1.0-SNAPSHOT"
 
