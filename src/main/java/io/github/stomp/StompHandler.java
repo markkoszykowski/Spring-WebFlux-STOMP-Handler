@@ -54,7 +54,7 @@ final class StompHandler implements WebSocketHandler {
 	// SessionId -> Ack -> StompFrame
 	final Map<String, Map<String, StompFrame>> ackFrameCache = new ConcurrentHashMap<>();
 
-	TriFunction<StompHandler, WebSocketSession, StompFrame, Mono<StompFrame>> handler(final StompCommand command) {
+	static TriFunction<StompHandler, WebSocketSession, StompFrame, Mono<StompFrame>> handler(final StompCommand command) {
 		return switch (command) {
 			case StompCommand.STOMP -> StompHandler::handleStomp;
 			case StompCommand.CONNECT -> StompHandler::handleConnect;
@@ -72,7 +72,7 @@ final class StompHandler implements WebSocketHandler {
 	}
 
 	Function<StompFrame, Mono<StompFrame>> handler(final WebSocketSession session) {
-		return inbound -> this.handler(inbound.command)
+		return inbound -> handler(inbound.command)
 				.apply(this, session, inbound)
 				.flatMap(outbound -> this.handleError(session, inbound, outbound).thenReturn(outbound));
 	}
@@ -83,13 +83,14 @@ final class StompHandler implements WebSocketHandler {
 				.flatMap(this.doOnEach(session, StompServer::doOnEachInbound))
 				.takeUntil(inbound -> inbound.command == StompCommand.DISCONNECT)
 				.flatMap(this.handler(session))
-				.takeUntil(outbound -> outbound.command == StompCommand.ERROR);
+				.takeUntil(outbound -> outbound.command == StompCommand.ERROR)
+				.cache(0);
 	}
 
 	@NonNull
 	@Override
 	public Mono<Void> handle(@NonNull final WebSocketSession session) {
-		final Flux<StompFrame> receiver = this.sessionReceiver(session).cache();
+		final Flux<StompFrame> receiver = this.sessionReceiver(session);
 		return session.send(
 						receiver.mergeWith(this.server.addWebSocketSources(session).flatMapMany(Flux::merge))
 								.takeUntilOther(receiver.ignoreElements())
@@ -226,30 +227,33 @@ final class StompHandler implements WebSocketHandler {
 			return Mono.just(StompUtils.makeError(inbound, "subscription info not found in cache"));
 		}
 
-		final List<StompFrame> ackOrNackMessages = new LinkedList<>();
-		if (subscriptionInfo.getT1() == StompServer.AckMode.CLIENT) {
-			synchronized (subscriptionInfo.getT2()) {
-				if (subscriptionInfo.getT2().contains(ackId)) {
-					String a;
-					do {
-						a = subscriptionInfo.getT2().poll();
-						if (a == null) {
-							break;
-						}
-						final StompFrame removed = frameCache.remove(ackId);
-						if (removed != null) {
-							ackOrNackMessages.add(removed);
-						}
-					} while (!a.equals(ackId));
+		final StompServer.AckMode ackMode = subscriptionInfo.getT1();
+		final Queue<String> queue = subscriptionInfo.getT2();
+
+		final List<StompFrame> ackOrNackMessages = switch (ackMode) {
+			case CLIENT -> {
+				synchronized (queue) {
+					if (queue.contains(ackId)) {
+						final List<StompFrame> messages = new ArrayList<>(Math.max(1, queue.size() / 2));
+
+						String a;
+						do {
+							a = queue.poll();
+							messages.add(frameCache.remove(a));
+						} while (!ackId.equals(a));
+
+						yield messages;
+					} else {
+						yield Collections.emptyList();
+					}
 				}
 			}
-		} else if (subscriptionInfo.getT1() == StompServer.AckMode.CLIENT_INDIVIDUAL) {
-			subscriptionInfo.getT2().remove(ackId);
-			final StompFrame removed = frameCache.remove(ackId);
-			if (removed != null) {
-				ackOrNackMessages.add(removed);
+			case CLIENT_INDIVIDUAL -> {
+				queue.remove(ackId);
+				yield Collections.singletonList(frameCache.remove(ackId));
 			}
-		}
+			default -> Collections.emptyList();
+		};
 
 		return callback.apply(this.server, session, inbound, StompUtils.makeReceipt(inbound), subscription, ackId, ackOrNackMessages);
 	}

@@ -18,9 +18,8 @@ java {
 	}
 }
 
-// https://checkstyle.org/releasenotes.html
 checkstyle {
-	toolVersion = "10.17.0"
+	toolVersion = libs.versions.checkstyle.get()
 }
 
 group = "com.github.stomp"

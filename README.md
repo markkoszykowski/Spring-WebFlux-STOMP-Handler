@@ -17,17 +17,17 @@ all the required boxes within the spec, but does not fully support every optiona
 
 This STOMP implementation is achieved using five general classes:
 
-- [```StompConfig.java```](src/main/java/org/github/stomp/server/StompConfig.java) - A basic Spring Configuration class
+- [```StompConfig.java```](src/main/java/io/github/stomp/StompConfig.java) - A basic Spring Configuration class
   used to configure multiple backend handlers, each with a different path.
-- [```StompFrame.java```](src/main/java/org/github/stomp/server/StompFrame.java) - A bare-bones immutable frame object
+- [```StompFrame.java```](src/main/java/io/github/stomp/StompFrame.java) - A bare-bones immutable frame object
   used to organize the different components of standard STOMP frames and handle the conversion to and from Spring
   WebFlux's ```WebSocketMessage```.
-- [```StompHandler.java```](src/main/java/org/github/stomp/server/StompHandler.java) - The backbone class that defines
+- [```StompHandler.java```](src/main/java/io/github/stomp/StompHandler.java) - The backbone class that defines
   the core functionality, logic, and implementation of a server-side STOMP handler.
-- [```StompServer.java```](src/main/java/org/github/stomp/server/StompServer.java) - A minimalistic interface that
+- [```StompServer.java```](src/main/java/io/github/stomp/StompServer.java) - A minimalistic interface that
   provides methods to define side effects upon receiving specific client frames. The methods allow users to have
   a final look at the responding frames and, while not suggested, alter them depending on applicable business logic.
-- [```StompUtils.java```](src/main/java/org/github/stomp/server/StompUtils.java) - A utility class intended to supply
+- [```StompUtils.java```](src/main/java/io/github/stomp/StompUtils.java) - A utility class intended to supply
   convenient functions to construct server-side STOMP frames.
 
 ## Intended Use

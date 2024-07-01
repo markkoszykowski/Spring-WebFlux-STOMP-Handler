@@ -1,13 +1,16 @@
 [versions]
+# https://checkstyle.org/releasenotes.html
+checkstyle = "10.17.0"
+
 # https://plugins.gradle.org/plugin/org.springframework.boot
-spring = "3.3.0"
+spring = "3.3.1"
 # https://mvnrepository.com/artifact/org.agrona/agrona
-agrona = "1.21.1"
+agrona = "1.21.2"
 
 # https://mvnrepository.com/artifact/io.cucumber/cucumber-bom
 cucumber = "7.18.0"
 # https://mvnrepository.com/artifact/org.junit/junit-bom
-junit = "5.10.2"
+junit = "5.10.3"
 
 
 [libraries]
