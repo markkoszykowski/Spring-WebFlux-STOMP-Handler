@@ -1,8 +1,7 @@
 plugins {
-	idea
-	`java-library`
-	checkstyle
-	libs.plugins.spring.boot
+	id("java-library")
+	id("checkstyle")
+	id("idea")
 }
 
 idea {
@@ -33,8 +32,8 @@ dependencies {
 	annotationProcessor(platform(libs.spring.dependencies))
 	implementation(platform(libs.spring.dependencies))
 
-	compileOnly(libs.lombok)
 	annotationProcessor(libs.lombok)
+	compileOnly(libs.lombok)
 
 	implementation(libs.bundles.spring.webflux.websocket)
 	implementation(libs.agrona)
@@ -42,6 +41,7 @@ dependencies {
 	testImplementation(platform(libs.cucumber.dependencies))
 	testImplementation(platform(libs.junit.dependencies))
 	testImplementation(libs.bundles.testing)
+	testRuntimeOnly(libs.junit.launcher)
 }
 
 tasks.test {

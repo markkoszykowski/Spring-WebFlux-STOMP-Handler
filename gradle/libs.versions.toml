@@ -27,12 +27,9 @@ cucumber-junit = { module = "io.cucumber:cucumber-junit-platform-engine" }
 
 junit-dependencies = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-suite = { module = "org.junit.platform:junit-platform-suite" }
+junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 
 
 [bundles]
 spring-webflux-websocket = ["spring-webflux", "spring-websocket"]
 testing = ["cucumber", "cucumber-junit", "junit-suite"]
-
-
-[plugins]
-spring-boot = { id = "org.springframework.boot", version.ref = "spring" }
