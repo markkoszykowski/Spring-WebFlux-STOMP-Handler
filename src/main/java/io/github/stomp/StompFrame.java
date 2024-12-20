@@ -180,7 +180,9 @@ public final class StompFrame {
 		if (this.body != null) {
 			if (this.bodyCharset == null) {
 				for (final byte b : this.body) {
-					sb.append(Integer.toBinaryString(b & 255 | 256).substring(1));
+					for (int i = Byte.SIZE - 1; 0 <= i; --i) {
+						sb.append(((b >>> i) & 0b1) == 0 ? '0' : '1');
+					}
 				}
 			} else {
 				sb.append(new String(this.body, this.bodyCharset));
