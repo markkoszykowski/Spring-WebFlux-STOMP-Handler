@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class StompUtils {
+public final class StompUtils {
 
 	private StompUtils() {
 	}
@@ -28,23 +28,23 @@ public class StompUtils {
 
 	// Helper Functions
 	static <K, V> MultiValueMap<K, V> toMultiValueMap(final Map<K, List<V>> map) {
-		return map != null ? CollectionUtils.toMultiValueMap(map) : null;
+		return map instanceof final MultiValueMap<K, V> multiValueMap ? multiValueMap : map == null ? null : CollectionUtils.toMultiValueMap(map);
 	}
 
 	static String contentLength(final byte[] body) {
-		return body != null ? String.valueOf(body.length) : "0";
+		return body == null ? "0" : String.valueOf(body.length);
 	}
 
 	static String contentType(final MimeType contentType) {
-		return contentType != null ? contentType.toString() : null;
+		return contentType == null ? null : contentType.toString();
 	}
 
 	// Make Functions
 	public static StompFrame makeMessage(final String destination, final String subscription, final String body) {
-		if (body != null) {
-			return makeMessage(destination, subscription, null, DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
-		} else {
+		if (body == null) {
 			return makeMessage(destination, subscription, null, null, null);
+		} else {
+			return makeMessage(destination, subscription, null, DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
 		}
 	}
 
@@ -61,18 +61,18 @@ public class StompUtils {
 	}
 
 	public static StompFrame makeMessage(final String destination, final String subscription, final Map<String, List<String>> userDefinedHeaders, final String body) {
-		if (body != null) {
-			return makeMessage(destination, subscription, toMultiValueMap(userDefinedHeaders), DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
-		} else {
+		if (body == null) {
 			return makeMessage(destination, subscription, toMultiValueMap(userDefinedHeaders), null, null);
+		} else {
+			return makeMessage(destination, subscription, toMultiValueMap(userDefinedHeaders), DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
 		}
 	}
 
 	public static StompFrame makeMessage(final String destination, final String subscription, final MultiValueMap<String, String> userDefinedHeaders, final String body) {
-		if (body != null) {
-			return makeMessage(destination, subscription, userDefinedHeaders, DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
-		} else {
+		if (body == null) {
 			return makeMessage(destination, subscription, userDefinedHeaders, null, null);
+		} else {
+			return makeMessage(destination, subscription, userDefinedHeaders, DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
 		}
 	}
 
@@ -99,7 +99,7 @@ public class StompUtils {
 			headers.addAll(userDefinedHeaders);
 		}
 
-		return new StompFrame(StompCommand.MESSAGE, headers, contentType != null ? contentType.getCharset() : null, body);
+		return new StompFrame(StompCommand.MESSAGE, headers, contentType == null ? null : contentType.getCharset(), body);
 	}
 
 	public static StompFrame makeReceipt(final StompFrame inbound) {
@@ -128,10 +128,10 @@ public class StompUtils {
 	}
 
 	public static StompFrame makeError(final StompFrame inbound, final String errorHeader, final String body) {
-		if (body != null) {
-			return makeError(inbound, errorHeader, null, DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
-		} else {
+		if (body == null) {
 			return makeError(inbound, errorHeader, null, null, null);
+		} else {
+			return makeError(inbound, errorHeader, null, DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
 		}
 	}
 
@@ -148,18 +148,18 @@ public class StompUtils {
 	}
 
 	public static StompFrame makeError(final StompFrame inbound, final String errorHeader, final Map<String, List<String>> userDefinedHeaders, final String body) {
-		if (body != null) {
-			return makeError(inbound, errorHeader, toMultiValueMap(userDefinedHeaders), DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
-		} else {
+		if (body == null) {
 			return makeError(inbound, errorHeader, toMultiValueMap(userDefinedHeaders), null, null);
+		} else {
+			return makeError(inbound, errorHeader, toMultiValueMap(userDefinedHeaders), DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
 		}
 	}
 
 	public static StompFrame makeError(final StompFrame inbound, final String errorHeader, final MultiValueMap<String, String> userDefinedHeaders, final String body) {
-		if (body != null) {
-			return makeError(inbound, errorHeader, userDefinedHeaders, DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
-		} else {
+		if (body == null) {
 			return makeError(inbound, errorHeader, userDefinedHeaders, null, null);
+		} else {
+			return makeError(inbound, errorHeader, userDefinedHeaders, DEFAULT_CONTENT_TYPE, body.getBytes(StompFrame.DEFAULT_CHARSET));
 		}
 	}
 
@@ -189,7 +189,7 @@ public class StompUtils {
 			headers.addAll(userDefinedHeaders);
 		}
 
-		return new StompFrame(StompCommand.ERROR, headers, contentType != null ? contentType.getCharset() : null, body);
+		return new StompFrame(StompCommand.ERROR, headers, contentType == null ? null : contentType.getCharset(), body);
 	}
 
 }

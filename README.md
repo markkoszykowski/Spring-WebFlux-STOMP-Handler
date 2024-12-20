@@ -34,14 +34,16 @@ This STOMP implementation is achieved using five general classes:
 
 Each class provided in this repository was designed with generality in mind. This is not to say that this
 implementation is complete or flawless, however, changes are not intended to be made to these five files. Instead,
-the ```StompServer``` should be implemented as many times as applicable for the specific server in mind. This repository
-serves as a trivial example of how to use this handler, with the ```SimpleStompServer``` and ```ComplexStompServer```
-demonstrating the implementations of potentially tailored business logic.
+the ```StompServer``` should be implemented as many times as applicable for the specific server in mind. The
+[```CountingServer.java```](src/test/java/io/github/stomp/server/CountingServer.java) and
+[```HelloWorldServer.java```](src/test/java/io/github/stomp/server/HelloWorldServer.java) demonstrate the 
+implementations of potentially tailored business logic.
 
 The ```StompUtils``` provides multiple utility functions to formulate outbound STOMP frames (listed below),
 which are recommended to be used instead of directly constructing a ```StompMessage```. Keep in mind that
 ```ERROR``` frames resulting from a non-compliance with the spec and ```RECEIPT``` frames expected in compliance
-with the spec are already generated when appropriate before methods in the ```StompServer``` implementations are called.
+with the spec are already generated when appropriate before methods in the ```StompServer``` implementations are 
+invoked.
 
 To create ```MESSAGE``` frames:
 
@@ -77,25 +79,21 @@ for ```StompServer#onError(WebSocketSession session, StompFrame inbound, StompFr
 of course) are guaranteed to be provided with either a non-```ERROR```
 or a null frame, thus eliminating the need to check for errors.
 
-## Example
+## Build
 
-This repository contains an example of an application based on the STOMP protocol.
-
-The example can be built by running the following from the repository root directory:
+This project can be built by running the following from the repository root directory:
 
 ```
 ./gradlew clean build
 ```
 
-To run the compiled JAR, run the following from the repository root directory:
+## Example
 
-```
-$JAVA_HOME/bin/java -jar ./build/libs/spring-webflux-stomp-1.0-SNAPSHOT.jar
-```
+This repository contains an example of an application based on the STOMP protocol.
 
-To interact with this example, open the [```websocket_test.html```](src/test/resources/websocket_test.html)
-or [```websocket_error_test.html```](src/test/resources/websocket_error_test.html) in your
-favorite browser and open up the console.
+To interact with this example, run the [```sandbox.feature```](src/test/resources/feature/sandbox.feature) Cucumber
+Scenario and open [```websocket_count.html```](src/test/resources/html/websocket_count.html) or
+[```websocket_hello_world.html```](src/test/resources/html/websocket_hello_world.html).
 
 ## Disclaimer
 

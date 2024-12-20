@@ -113,11 +113,11 @@ final class StompHandler implements WebSocketHandler {
 	Mono<StompFrame> handleProtocolNegotiation(final WebSocketSession session, final StompFrame inbound, final HexFunction<StompServer, WebSocketSession, StompFrame, StompFrame, StompServer.Version, String, Mono<StompFrame>> callback) {
 		final String versionsString = inbound.headers.getFirst(StompHeaders.ACCEPT_VERSION);
 		final StompServer.Version usingVersion;
-		if (versionsString != null) {
+		if (versionsString == null) {
+			usingVersion = StompServer.Version.v1_0;
+		} else {
 			final Set<String> versionsSet = Set.of(versionsString.split(","));
 			usingVersion = SUPPORTED_VERSIONS.stream().filter(version -> versionsSet.contains(version.version)).findFirst().orElse(null);
-		} else {
-			usingVersion = StompServer.Version.v1_0;
 		}
 
 		if (usingVersion == null) {

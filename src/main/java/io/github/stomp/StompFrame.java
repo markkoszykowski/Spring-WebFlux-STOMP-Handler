@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public class StompFrame {
+public final class StompFrame {
 
 	public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
@@ -107,7 +107,7 @@ public class StompFrame {
 	}
 
 	public byte[] body() {
-		return this.body != null ? this.body.clone() : null;
+		return this.body == null ? null : this.body.clone();
 	}
 
 	public String commandString() {
@@ -132,27 +132,27 @@ public class StompFrame {
 	@SuppressWarnings(value = {"unchecked"})
 	static MultiValueMap<String, String> parseHeaders(final StompHeaderAccessor accessor) {
 		final Map<String, List<String>> headers = (Map<String, List<String>>) accessor.getHeader(NativeMessageHeaderAccessor.NATIVE_HEADERS);
-		return CollectionUtils.toMultiValueMap(headers != null ? headers : Collections.emptyMap());
+		return CollectionUtils.toMultiValueMap(headers == null ? Collections.emptyMap() : headers);
 	}
 
 	static Charset parseBodyCharset(final StompHeaderAccessor accessor) {
 		final MimeType contentType = accessor.getContentType();
-		return contentType != null ? contentType.getCharset() : null;
+		return contentType == null ? null : contentType.getCharset();
 	}
 
 	static byte[] parseBody(final Message<byte[]> message, final StompHeaderAccessor accessor) {
 		final Integer contentLength = accessor.getContentLength();
 		final byte[] temp = message.getPayload();
-		if (contentLength != null) {
-			return contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
-		} else {
+		if (contentLength == null) {
 			return temp;
+		} else {
+			return contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
 		}
 	}
 
 
 	int capacityGuesstimate() {
-		return this.command.name().length() + (64 * this.headers.size()) + (this.body != null ? this.body.length : 0) + 4;
+		return this.command.name().length() + (64 * this.headers.size()) + (this.body == null ? 0 : this.body.length) + 4;
 	}
 
 	@Override
@@ -178,12 +178,12 @@ public class StompFrame {
 		sb.append(EOL);
 
 		if (this.body != null) {
-			if (this.bodyCharset != null) {
-				sb.append(new String(this.body, this.bodyCharset));
-			} else {
+			if (this.bodyCharset == null) {
 				for (final byte b : this.body) {
 					sb.append(Integer.toBinaryString(b & 255 | 256).substring(1));
 				}
+			} else {
+				sb.append(new String(this.body, this.bodyCharset));
 			}
 		}
 
