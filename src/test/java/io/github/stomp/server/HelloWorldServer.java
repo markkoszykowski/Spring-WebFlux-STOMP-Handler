@@ -33,9 +33,11 @@ public class HelloWorldServer implements StompServer {
 
 	@Override
 	public Mono<List<Flux<StompFrame>>> addWebSocketSources(final WebSocketSession session) {
-		return Mono.just(Collections.singletonList(
-				this.sinks.compute(session.getId(), (k, v) -> Sinks.many().unicast().onBackpressureBuffer()).asFlux()
-		));
+		return Mono.just(
+				Collections.singletonList(
+						this.sinks.computeIfAbsent(session.getId(), k -> Sinks.many().unicast().onBackpressureBuffer()).asFlux()
+				)
+		);
 	}
 
 	@Override

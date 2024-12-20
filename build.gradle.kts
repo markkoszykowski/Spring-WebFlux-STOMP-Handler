@@ -42,6 +42,9 @@ dependencies {
 	testImplementation(platform(libs.junit.dependencies))
 	testImplementation(libs.bundles.testing)
 	testRuntimeOnly(libs.junit.launcher)
+
+	testAnnotationProcessor(libs.lombok)
+	testCompileOnly(libs.lombok)
 }
 
 tasks.test {

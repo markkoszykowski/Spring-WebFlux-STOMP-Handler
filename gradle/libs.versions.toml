@@ -4,8 +4,11 @@ checkstyle = "10.21.0"
 
 # https://plugins.gradle.org/plugin/org.springframework.boot
 spring = "3.4.1"
+# https://mvnrepository.com/artifact/org.projectlombok/lombok
+lombok = "1.18.36"
 # https://mvnrepository.com/artifact/org.agrona/agrona
 agrona = "2.0.0"
+
 
 # https://mvnrepository.com/artifact/io.cucumber/cucumber-bom
 cucumber = "7.20.1"
@@ -15,21 +18,25 @@ junit = "5.11.4"
 
 [libraries]
 spring-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring" }
-lombok = { module = "org.projectlombok:lombok" }
 spring-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
 spring-websocket = { module = "org.springframework.boot:spring-boot-starter-websocket" }
+spring-test = { module = "org.springframework.boot:spring-boot-test" }
+
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 
 agrona = { module = "org.agrona:agrona", version.ref = "agrona" }
 
 cucumber-dependencies = { module = "io.cucumber:cucumber-bom", version.ref = "cucumber" }
 cucumber = { module = "io.cucumber:cucumber-java" }
 cucumber-junit = { module = "io.cucumber:cucumber-junit-platform-engine" }
+cucumber-spring = { module = "io.cucumber:cucumber-spring" }
 
 junit-dependencies = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit = { module = "org.junit.jupiter:junit-jupiter-api" }
 junit-suite = { module = "org.junit.platform:junit-platform-suite" }
 junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 
 
 [bundles]
 spring-webflux-websocket = ["spring-webflux", "spring-websocket"]
-testing = ["cucumber", "cucumber-junit", "junit-suite"]
+testing = ["cucumber", "cucumber-junit", "cucumber-spring", "junit", "junit-suite", "spring-test"]

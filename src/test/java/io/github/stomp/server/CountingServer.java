@@ -43,14 +43,25 @@ public class CountingServer implements StompServer {
 
 	@Override
 	public Mono<List<Flux<StompFrame>>> addWebSocketSources(final WebSocketSession session) {
-		return Mono.just(Collections.singletonList(
-				this.sinks.compute(session.getId(), (k, v) -> Sinks.many().unicast().onBackpressureBuffer()).asFlux()
-		));
+		return Mono.just(
+				Collections.singletonList(
+						this.sinks.computeIfAbsent(session.getId(), k -> Sinks.many().unicast().onBackpressureBuffer()).asFlux()
+				)
+		);
 	}
 
 	@Override
 	public Mono<Void> doFinally(final WebSocketSession session, final Map<String, Tuple2<AckMode, Queue<String>>> subscriptionCache, final Map<String, StompFrame> frameCache) {
-		this.sinks.remove(session.getId());
+		final String sessionId = session.getId();
+		final Map<String, Disposable> subscriptions = this.subscriptions.remove(sessionId);
+		if (subscriptions != null) {
+			subscriptions.forEach((k, v) -> {
+				if (v != null) {
+					v.dispose();
+				}
+			});
+		}
+		this.sinks.remove(sessionId);
 		return StompServer.super.doFinally(session, subscriptionCache, frameCache);
 	}
 
