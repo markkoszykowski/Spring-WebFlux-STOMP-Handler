@@ -91,7 +91,7 @@ This project can be built by running the following from the repository root dire
 
 This repository contains an example of an application based on the STOMP protocol.
 
-To interact with this example, run the [```sandbox.feature```](src/test/resources/feature/sandbox.feature) Cucumber
+To interact with this example, run the [```sample.feature```](src/test/resources/feature/sample.feature) Cucumber
 Scenario and open [```websocket_count.html```](src/test/resources/html/websocket_count.html) or
 [```websocket_hello_world.html```](src/test/resources/html/websocket_hello_world.html).
 
