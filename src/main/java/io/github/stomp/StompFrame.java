@@ -146,7 +146,7 @@ public final class StompFrame {
 		if (contentLength == null) {
 			return temp;
 		} else {
-			return contentLength >= temp.length ? temp : Arrays.copyOf(temp, contentLength);
+			return contentLength < temp.length ? Arrays.copyOf(temp, contentLength) : temp;
 		}
 	}
 
