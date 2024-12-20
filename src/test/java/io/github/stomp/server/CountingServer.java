@@ -32,7 +32,6 @@ public class CountingServer implements StompServer {
 	private final Map<String, Map<String, Disposable>> subscriptions = new ConcurrentHashMap<>();
 	private final Map<String, Sinks.Many<StompFrame>> sinks = new ConcurrentHashMap<>();
 
-
 	public static StompFrame generateCountMessage(final String destination, final String subscriptionId, final long i) {
 		return StompUtils.makeMessage(destination, subscriptionId, i > 0 ? String.valueOf(i) : "Starting count");
 	}

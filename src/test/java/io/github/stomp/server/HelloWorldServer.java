@@ -22,7 +22,6 @@ public class HelloWorldServer implements StompServer {
 
 	private final Map<String, Sinks.Many<StompFrame>> sinks = new ConcurrentHashMap<>();
 
-
 	public static StompFrame generateHelloWorldMessage(final String destination, final String subscriptionId, final Charset charset) {
 		return StompUtils.makeMessage(destination, subscriptionId, new MimeType("text", "plain", charset), "Hello World!".getBytes(charset));
 	}
